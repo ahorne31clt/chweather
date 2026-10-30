@@ -2,9 +2,15 @@
 
 Static HTML, CSS, and JavaScript. No build system, account, or paid service required.
 
+## Daily sunset outlook
+
+The experimental outlook uses real NOAA GFS data and renders a branded CONUS graphic with three highlights at least 600 km apart. After installing `requirements-sunset.txt`, run **`python -m sunset`**. Website-ready outputs are `generated/sunset/latest.png` and `generated/sunset/latest.json`. See [complete Ubuntu installation, GitHub Pages scheduling, methodology, environment variables, and limitations](docs/SUNSET.md). No weather API credentials or required environment variables are needed. Remote scheduling is not active until this repository is uploaded to GitHub and Pages is configured.
+
+The website has a homepage outlook section and `/sunset/` page. The About page now uses Christopher's supplied headshot. For a safe static export, use `python scripts/package_site.py --zip output/ch-weather-website.zip`.
+
 ## Preview
 
-Open `index.html` directly, or run `python -m http.server 8000` in this folder and visit http://localhost:8000. The portfolio begins at `/portfolio/` when served.
+Run `python -m http.server 8000` in this folder and visit http://localhost:8000. The portfolio begins at `/portfolio/` and the forecast at `/sunset/`. Opening `index.html` directly also shows the static content, but browsers can block forecast JSON loading over `file://`.
 
 ## Edit
 
@@ -31,6 +37,6 @@ Replace the planned entries in `portfolio/projects.html` with real titles, dates
 
 ## Hosting later
 
-Upload `index.html`, `assets/`, `portfolio/`, and `output/pdf/` to any static host. No subdomain is required. Keep the directory structure intact. `/portfolio/` is a path on the same domain. No current weather feed, analytics, form service, or credentials are configured.
+Use `python scripts/package_site.py --output-dir _site` and upload that fresh export to any static host. It includes the homepage, assets, portfolio, sunset page, generated forecast, documentation, and placeholder résumé. No subdomain is required. `/portfolio/` and `/sunset/` are paths on the same domain. The sunset pipeline uses real GFS forecast data; there is no live-conditions feed, analytics, form service, or stored credential. Daily GitHub Pages deployment setup is in `docs/SUNSET.md`.
 
 The transcript is deliberately not included in the website files. Grades, GPA, birth date, and withdrawn/failed coursework are not published. Courses currently being repeated appear only in the current category. Spring 2027 courses are planned, not confirmed enrollment.
