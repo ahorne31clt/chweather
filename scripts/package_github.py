@@ -5,10 +5,11 @@ from scripts.package_site import ROOT,site_files
 
 
 def package():
-    files=set(site_files())
+    # Model images are generated in Actions, not uploaded as source assets.
+    files={path for path in site_files() if 'generated/models/' not in path.relative_to(ROOT).as_posix()}
     files.update(ROOT/path for path in ['.gitignore','.github/workflows/sunset.yml',
                   'requirements-sunset.txt','requirements-sunset-dev.txt'])
-    for directory in ['sunset','weather','scripts','tests']:
+    for directory in ['sunset','weather','models','scripts','tests']:
         files.update((ROOT/directory).glob('*.py'))
     files.add(ROOT/'sunset/cities.json')
     out=ROOT/'output/ch-weather-github-ready.zip'

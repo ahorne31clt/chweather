@@ -16,9 +16,14 @@ def site_files():
     yield ROOT/'docs/CHANGES-OUTLOOKS.md'
     yield ROOT/'docs/LOCAL-FORECAST.md'
     yield ROOT/'docs/CHANGES-LOCAL-FORECAST.md'
+    yield ROOT/'docs/MODELS.md'
+    yield ROOT/'docs/CHANGES-MODELS.md'
+    yield ROOT/'docs/AIRPORTS.md'
+    yield ROOT/'docs/CHANGES-AIRPORTS.md'
     yield from sorted((ROOT/'portfolio').glob('*.html'))
     yield ROOT/'sunset/index.html'
     yield ROOT/'outlooks/index.html'
+    yield ROOT/'models/index.html'
     yield from sorted(p for p in (ROOT/'assets').rglob('*') if p.is_file())
     yield ROOT/'output/pdf/christopher-horne-resume-placeholder.pdf'
     yield ROOT/'generated/sunset/latest.png'
@@ -32,6 +37,27 @@ def site_files():
         if Path(filename).name!=filename or not filename.endswith('.png'):
             raise ValueError('Invalid weather graphic filename')
         yield ROOT/'generated/weather'/filename
+    yield ROOT/'generated/models/latest.json'
+    models=json.loads((ROOT/'generated/models/latest.json').read_text(encoding='utf-8'))
+    for model in models['models']:
+        if model['status']!='available':continue
+        for frame in model['frames']:
+            names={image['image_filename'] for image in frame.get('images',{'precip':frame}).values()}
+            if frame.get('readouts'):names.add(frame['readouts']['filename'])
+            for filename in sorted(names):
+                if Path(filename).name!=filename or Path(filename).suffix not in ('.png','.bin'):
+                    raise ValueError('Invalid model asset filename')
+                yield ROOT/'generated/models'/filename
+    airport_root=ROOT/'generated/models/airports'
+    yield airport_root/'latest.json'
+    airport_manifest=json.loads((airport_root/'latest.json').read_text(encoding='utf-8'))
+    yield airport_root/'catalog.json'
+    for model in airport_manifest['models']:
+        for chunk in model['chunks']:
+            filename=chunk['filename']
+            if Path(filename).name!=filename or not filename.endswith('.bin'):
+                raise ValueError('Invalid airport asset filename')
+            yield airport_root/filename
 
 
 def package(output, zipped=False):
