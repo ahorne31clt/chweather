@@ -12,12 +12,26 @@ def site_files():
     yield ROOT/'README.md'
     yield ROOT/'docs/SUNSET.md'
     yield ROOT/'docs/CHANGES-SUNSET.md'
+    yield ROOT/'docs/OUTLOOKS.md'
+    yield ROOT/'docs/CHANGES-OUTLOOKS.md'
+    yield ROOT/'docs/LOCAL-FORECAST.md'
+    yield ROOT/'docs/CHANGES-LOCAL-FORECAST.md'
     yield from sorted((ROOT/'portfolio').glob('*.html'))
     yield ROOT/'sunset/index.html'
+    yield ROOT/'outlooks/index.html'
     yield from sorted(p for p in (ROOT/'assets').rglob('*') if p.is_file())
     yield ROOT/'output/pdf/christopher-horne-resume-placeholder.pdf'
     yield ROOT/'generated/sunset/latest.png'
     yield ROOT/'generated/sunset/latest.json'
+    yield ROOT/'generated/sunset/lookup.json'
+    yield ROOT/'generated/weather/latest.json'
+    import json
+    manifest=json.loads((ROOT/'generated/weather/latest.json').read_text(encoding='utf-8'))
+    for product in manifest['products']:
+        filename=product['image_filename']
+        if Path(filename).name!=filename or not filename.endswith('.png'):
+            raise ValueError('Invalid weather graphic filename')
+        yield ROOT/'generated/weather'/filename
 
 
 def package(output, zipped=False):

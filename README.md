@@ -2,6 +2,12 @@
 
 Static HTML, CSS, and JavaScript. No build system, account, or paid service required.
 
+## Weather outlooks and location search
+
+The outlook page now also includes an interactive **local NWS forecast**: city/ZIP or coordinate search, optional browser location, day/night period selection, the next 12 hourly forecasts, original NWS narrative, precipitation chances, wind and update times. Charlotte loads as the labeled default. This data is retrieved on demand from the NWS, independently of the scheduled map graphics. See [component details](docs/LOCAL-FORECAST.md) and [exact changed files](docs/CHANGES-LOCAL-FORECAST.md).
+
+The `/outlooks/` page now includes official SPC Days 1–3, national and North Carolina NWS weather graphics, 12-hour precipitation-chance maps, and attributed Explore Fall foliage-model maps. `/sunset/` supports city/ZIP, coordinates, and optional browser-location lookup using the actual published score grid. Run `python -m sunset` and `python -m weather`; the existing daily workflow now generates and publishes both. See [sources, commands, and interpretation](docs/OUTLOOKS.md) and [the exact file-change list](docs/CHANGES-OUTLOOKS.md). Create a complete GitHub-ready ZIP with `python -m scripts.package_github`.
+
 ## Daily sunset outlook
 
 The experimental outlook uses real NOAA GFS data and renders a branded CONUS graphic with three highlights at least 600 km apart. After installing `requirements-sunset.txt`, run **`python -m sunset`**. Website-ready outputs are `generated/sunset/latest.png` and `generated/sunset/latest.json`. See [complete Ubuntu installation, GitHub Pages scheduling, methodology, environment variables, and limitations](docs/SUNSET.md). No weather API credentials or required environment variables are needed. Remote scheduling is not active until this repository is uploaded to GitHub and Pages is configured.

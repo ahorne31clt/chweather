@@ -1,0 +1,669 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-10-30T05:34:32Z",
+  "products": [
+    {
+      "issued_at_utc": "2026-10-30T00:28:00Z",
+      "valid_start_utc": "2026-10-30T01:00:00Z",
+      "valid_end_utc": "2026-10-30T12:00:00Z",
+      "summary": "Thunderstorms with an isolated hail threat will be possible this evening over parts of central and northeast Kansas. A brief tornado will be possible in parts of southwest Texas early this evening.",
+      "source_urls": [
+        "https://www.spc.noaa.gov/products/outlook/day1otlk_cat.nolyr.geojson",
+        "https://www.spc.noaa.gov/products/outlook/day1otlk.txt"
+      ],
+      "source": "NOAA/NWS Storm Prediction Center",
+      "kind": "Official SPC categorical outlook; CH Weather presentation",
+      "id": "spc-day1",
+      "title": "SPC DAY 1 OUTLOOK",
+      "subtitle": "CONUS / OFFICIAL CATEGORICAL RISK",
+      "type": "spc",
+      "region": "national",
+      "cities": [
+        {
+          "name": "Seattle",
+          "lat": 47.606,
+          "lon": -122.332
+        },
+        {
+          "name": "Los Angeles",
+          "lat": 34.052,
+          "lon": -118.244
+        },
+        {
+          "name": "Denver",
+          "lat": 39.739,
+          "lon": -104.99
+        },
+        {
+          "name": "Dallas",
+          "lat": 32.777,
+          "lon": -96.797
+        },
+        {
+          "name": "Chicago",
+          "lat": 41.878,
+          "lon": -87.63
+        },
+        {
+          "name": "Charlotte",
+          "lat": 35.227,
+          "lon": -80.843
+        },
+        {
+          "name": "New York",
+          "lat": 40.713,
+          "lon": -74.006
+        },
+        {
+          "name": "Miami",
+          "lat": 25.762,
+          "lon": -80.192
+        }
+      ],
+      "generated_at_utc": "2026-10-30T05:34:32Z",
+      "image_filename": "spc-day1.png",
+      "image_sha256": "d46d728f825c196a88040cab05b05b482aa181179a98956d9fe7f224be83e0a3"
+    },
+    {
+      "issued_at_utc": "2026-10-29T17:29:00Z",
+      "valid_start_utc": "2026-10-30T12:00:00Z",
+      "valid_end_utc": "2026-10-31T12:00:00Z",
+      "summary": "Isolated strong to severe thunderstorms are possible across portions of southern/central Arizona on Friday. Damaging wind gusts and large hail will be possible with the strongest storms.",
+      "source_urls": [
+        "https://www.spc.noaa.gov/products/outlook/day2otlk_cat.nolyr.geojson",
+        "https://www.spc.noaa.gov/products/outlook/day2otlk.txt"
+      ],
+      "source": "NOAA/NWS Storm Prediction Center",
+      "kind": "Official SPC categorical outlook; CH Weather presentation",
+      "id": "spc-day2",
+      "title": "SPC DAY 2 OUTLOOK",
+      "subtitle": "CONUS / OFFICIAL CATEGORICAL RISK",
+      "type": "spc",
+      "region": "national",
+      "cities": [
+        {
+          "name": "Seattle",
+          "lat": 47.606,
+          "lon": -122.332
+        },
+        {
+          "name": "Los Angeles",
+          "lat": 34.052,
+          "lon": -118.244
+        },
+        {
+          "name": "Denver",
+          "lat": 39.739,
+          "lon": -104.99
+        },
+        {
+          "name": "Dallas",
+          "lat": 32.777,
+          "lon": -96.797
+        },
+        {
+          "name": "Chicago",
+          "lat": 41.878,
+          "lon": -87.63
+        },
+        {
+          "name": "Charlotte",
+          "lat": 35.227,
+          "lon": -80.843
+        },
+        {
+          "name": "New York",
+          "lat": 40.713,
+          "lon": -74.006
+        },
+        {
+          "name": "Miami",
+          "lat": 25.762,
+          "lon": -80.192
+        }
+      ],
+      "generated_at_utc": "2026-10-30T05:34:32Z",
+      "image_filename": "spc-day2.png",
+      "image_sha256": "ef6f336ef7b8faf44c21dabbb29623ee45c9bc2c12e167e2950f7e1a3eb7330c"
+    },
+    {
+      "issued_at_utc": "2026-10-29T19:27:00Z",
+      "valid_start_utc": "2026-10-31T12:00:00Z",
+      "valid_end_utc": "2026-11-01T12:00:00Z",
+      "summary": "Severe thunderstorms are not expected on Saturday.",
+      "source_urls": [
+        "https://www.spc.noaa.gov/products/outlook/day3otlk_cat.nolyr.geojson",
+        "https://www.spc.noaa.gov/products/outlook/day3otlk.txt"
+      ],
+      "source": "NOAA/NWS Storm Prediction Center",
+      "kind": "Official SPC categorical outlook; CH Weather presentation",
+      "id": "spc-day3",
+      "title": "SPC DAY 3 OUTLOOK",
+      "subtitle": "CONUS / OFFICIAL CATEGORICAL RISK",
+      "type": "spc",
+      "region": "national",
+      "cities": [
+        {
+          "name": "Seattle",
+          "lat": 47.606,
+          "lon": -122.332
+        },
+        {
+          "name": "Los Angeles",
+          "lat": 34.052,
+          "lon": -118.244
+        },
+        {
+          "name": "Denver",
+          "lat": 39.739,
+          "lon": -104.99
+        },
+        {
+          "name": "Dallas",
+          "lat": 32.777,
+          "lon": -96.797
+        },
+        {
+          "name": "Chicago",
+          "lat": 41.878,
+          "lon": -87.63
+        },
+        {
+          "name": "Charlotte",
+          "lat": 35.227,
+          "lon": -80.843
+        },
+        {
+          "name": "New York",
+          "lat": 40.713,
+          "lon": -74.006
+        },
+        {
+          "name": "Miami",
+          "lat": 25.762,
+          "lon": -80.192
+        }
+      ],
+      "generated_at_utc": "2026-10-30T05:34:32Z",
+      "image_filename": "spc-day3.png",
+      "image_sha256": "e2a7375428935dfdbe9751b224d425d0bca795a8c25b5f43654e132d0df6bf40"
+    },
+    {
+      "source": "NOAA/NWS National Digital Forecast Database",
+      "source_urls": [
+        "https://tgftp.nws.noaa.gov/SL.us008001/ST.opnl/DF.gr2/DC.ndfd/AR.conus/VP.001-003/ds.maxt.bin"
+      ],
+      "issued_at_utc": "2026-10-30T05:30:00Z",
+      "valid_start_utc": "2026-10-30T12:00:00Z",
+      "valid_end_utc": "2026-10-31T00:00:00Z",
+      "kind": "Official NWS forecast grids; CH Weather presentation",
+      "native_grid_km": 2.5,
+      "render_sampling": "Every second native grid point; nearest-neighbor sampling",
+      "units": "degrees Fahrenheit",
+      "id": "weather-national",
+      "title": "NATIONAL WEATHER OUTLOOK",
+      "subtitle": "NWS DAYTIME HIGHS / MATCHING 12-HOUR PRECIPITATION CHANCE",
+      "type": "weather",
+      "region": "national",
+      "cities": [
+        {
+          "name": "Seattle",
+          "lat": 47.606,
+          "lon": -122.332,
+          "high_f": 51.0,
+          "pop_percent": 58.0
+        },
+        {
+          "name": "Los Angeles",
+          "lat": 34.052,
+          "lon": -118.244,
+          "high_f": 70.1,
+          "pop_percent": 39.0
+        },
+        {
+          "name": "Denver",
+          "lat": 39.739,
+          "lon": -104.99,
+          "high_f": 65.9,
+          "pop_percent": 1.0
+        },
+        {
+          "name": "Dallas",
+          "lat": 32.777,
+          "lon": -96.797,
+          "high_f": 76.0,
+          "pop_percent": 18.0
+        },
+        {
+          "name": "Chicago",
+          "lat": 41.878,
+          "lon": -87.63,
+          "high_f": 58.0,
+          "pop_percent": 11.0
+        },
+        {
+          "name": "Charlotte",
+          "lat": 35.227,
+          "lon": -80.843,
+          "high_f": 81.1,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "New York",
+          "lat": 40.713,
+          "lon": -74.006,
+          "high_f": 71.0,
+          "pop_percent": 1.0
+        },
+        {
+          "name": "Miami",
+          "lat": 25.762,
+          "lon": -80.192,
+          "high_f": 85.0,
+          "pop_percent": 36.0
+        }
+      ],
+      "precipitation_source": {
+        "source": "NOAA/NWS National Digital Forecast Database",
+        "source_urls": [
+          "https://tgftp.nws.noaa.gov/SL.us008001/ST.opnl/DF.gr2/DC.ndfd/AR.conus/VP.001-003/ds.pop12.bin"
+        ],
+        "issued_at_utc": "2026-10-30T05:30:00Z",
+        "valid_start_utc": "2026-10-30T12:00:00Z",
+        "valid_end_utc": "2026-10-31T00:00:00Z",
+        "kind": "Official NWS forecast grids; CH Weather presentation",
+        "native_grid_km": 2.5,
+        "render_sampling": "Every second native grid point; nearest-neighbor sampling",
+        "units": "percent"
+      },
+      "forecast_valid_date": "2026-10-30",
+      "generated_at_utc": "2026-10-30T05:34:32Z",
+      "image_filename": "weather-national.png",
+      "image_sha256": "ca383f099a78666ce6aff5d4daa30d0c5320b4ba7fb9ed1ccb9a0240e8cbb6c3"
+    },
+    {
+      "source": "NOAA/NWS National Digital Forecast Database",
+      "source_urls": [
+        "https://tgftp.nws.noaa.gov/SL.us008001/ST.opnl/DF.gr2/DC.ndfd/AR.conus/VP.001-003/ds.pop12.bin"
+      ],
+      "issued_at_utc": "2026-10-30T05:30:00Z",
+      "valid_start_utc": "2026-10-30T12:00:00Z",
+      "valid_end_utc": "2026-10-31T00:00:00Z",
+      "kind": "Official NWS forecast grids; CH Weather presentation",
+      "native_grid_km": 2.5,
+      "render_sampling": "Every second native grid point; nearest-neighbor sampling",
+      "units": "percent",
+      "id": "rain-national",
+      "title": "NATIONAL PRECIPITATION CHANCE",
+      "subtitle": "NWS NDFD / ONE DAYTIME 12-HOUR INTERVAL / RAIN OR SNOW",
+      "type": "rain",
+      "region": "national",
+      "cities": [
+        {
+          "name": "Seattle",
+          "lat": 47.606,
+          "lon": -122.332,
+          "pop_percent": 58.0
+        },
+        {
+          "name": "Los Angeles",
+          "lat": 34.052,
+          "lon": -118.244,
+          "pop_percent": 39.0
+        },
+        {
+          "name": "Denver",
+          "lat": 39.739,
+          "lon": -104.99,
+          "pop_percent": 1.0
+        },
+        {
+          "name": "Dallas",
+          "lat": 32.777,
+          "lon": -96.797,
+          "pop_percent": 18.0
+        },
+        {
+          "name": "Chicago",
+          "lat": 41.878,
+          "lon": -87.63,
+          "pop_percent": 11.0
+        },
+        {
+          "name": "Charlotte",
+          "lat": 35.227,
+          "lon": -80.843,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "New York",
+          "lat": 40.713,
+          "lon": -74.006,
+          "pop_percent": 1.0
+        },
+        {
+          "name": "Miami",
+          "lat": 25.762,
+          "lon": -80.192,
+          "pop_percent": 36.0
+        }
+      ],
+      "forecast_valid_date": "2026-10-30",
+      "generated_at_utc": "2026-10-30T05:34:32Z",
+      "image_filename": "rain-national.png",
+      "image_sha256": "a5484b24ff7595f61c908b1173f16fa3fd5dbef3d72502fa25e191040809eb3a"
+    },
+    {
+      "source": "NOAA/NWS National Digital Forecast Database",
+      "source_urls": [
+        "https://tgftp.nws.noaa.gov/SL.us008001/ST.opnl/DF.gr2/DC.ndfd/AR.conus/VP.001-003/ds.maxt.bin"
+      ],
+      "issued_at_utc": "2026-10-30T05:30:00Z",
+      "valid_start_utc": "2026-10-30T12:00:00Z",
+      "valid_end_utc": "2026-10-31T00:00:00Z",
+      "kind": "Official NWS forecast grids; CH Weather presentation",
+      "native_grid_km": 2.5,
+      "render_sampling": "Every second native grid point; nearest-neighbor sampling",
+      "units": "degrees Fahrenheit",
+      "id": "weather-nc",
+      "title": "CAROLINA WEATHER OUTLOOK",
+      "subtitle": "NWS DAYTIME HIGHS / MATCHING 12-HOUR PRECIPITATION CHANCE",
+      "type": "weather",
+      "region": "nc",
+      "cities": [
+        {
+          "name": "Asheville",
+          "lat": 35.595,
+          "lon": -82.552,
+          "high_f": 79.1,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Charlotte",
+          "lat": 35.227,
+          "lon": -80.843,
+          "high_f": 81.1,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Boone",
+          "lat": 36.217,
+          "lon": -81.674,
+          "high_f": 69.0,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Greensboro",
+          "lat": 36.073,
+          "lon": -79.792,
+          "high_f": 79.1,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Raleigh",
+          "lat": 35.78,
+          "lon": -78.638,
+          "high_f": 82.0,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Fayetteville",
+          "lat": 35.053,
+          "lon": -78.878,
+          "high_f": 83.0,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Wilmington",
+          "lat": 34.226,
+          "lon": -77.945,
+          "high_f": 81.1,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Greenville",
+          "lat": 35.612,
+          "lon": -77.366,
+          "high_f": 81.1,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Elizabeth City",
+          "lat": 36.295,
+          "lon": -76.251,
+          "high_f": 80.0,
+          "pop_percent": 0.0
+        }
+      ],
+      "precipitation_source": {
+        "source": "NOAA/NWS National Digital Forecast Database",
+        "source_urls": [
+          "https://tgftp.nws.noaa.gov/SL.us008001/ST.opnl/DF.gr2/DC.ndfd/AR.conus/VP.001-003/ds.pop12.bin"
+        ],
+        "issued_at_utc": "2026-10-30T05:30:00Z",
+        "valid_start_utc": "2026-10-30T12:00:00Z",
+        "valid_end_utc": "2026-10-31T00:00:00Z",
+        "kind": "Official NWS forecast grids; CH Weather presentation",
+        "native_grid_km": 2.5,
+        "render_sampling": "Every second native grid point; nearest-neighbor sampling",
+        "units": "percent"
+      },
+      "forecast_valid_date": "2026-10-30",
+      "generated_at_utc": "2026-10-30T05:34:32Z",
+      "image_filename": "weather-nc.png",
+      "image_sha256": "57b6d06f1abc386d37453d0439f55448ae75176c2ccb7a26fa82b05453e3cd23"
+    },
+    {
+      "source": "NOAA/NWS National Digital Forecast Database",
+      "source_urls": [
+        "https://tgftp.nws.noaa.gov/SL.us008001/ST.opnl/DF.gr2/DC.ndfd/AR.conus/VP.001-003/ds.pop12.bin"
+      ],
+      "issued_at_utc": "2026-10-30T05:30:00Z",
+      "valid_start_utc": "2026-10-30T12:00:00Z",
+      "valid_end_utc": "2026-10-31T00:00:00Z",
+      "kind": "Official NWS forecast grids; CH Weather presentation",
+      "native_grid_km": 2.5,
+      "render_sampling": "Every second native grid point; nearest-neighbor sampling",
+      "units": "percent",
+      "id": "rain-nc",
+      "title": "CAROLINA PRECIPITATION CHANCE",
+      "subtitle": "NWS NDFD / ONE DAYTIME 12-HOUR INTERVAL / RAIN OR SNOW",
+      "type": "rain",
+      "region": "nc",
+      "cities": [
+        {
+          "name": "Asheville",
+          "lat": 35.595,
+          "lon": -82.552,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Charlotte",
+          "lat": 35.227,
+          "lon": -80.843,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Boone",
+          "lat": 36.217,
+          "lon": -81.674,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Greensboro",
+          "lat": 36.073,
+          "lon": -79.792,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Raleigh",
+          "lat": 35.78,
+          "lon": -78.638,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Fayetteville",
+          "lat": 35.053,
+          "lon": -78.878,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Wilmington",
+          "lat": 34.226,
+          "lon": -77.945,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Greenville",
+          "lat": 35.612,
+          "lon": -77.366,
+          "pop_percent": 0.0
+        },
+        {
+          "name": "Elizabeth City",
+          "lat": 36.295,
+          "lon": -76.251,
+          "pop_percent": 0.0
+        }
+      ],
+      "forecast_valid_date": "2026-10-30",
+      "generated_at_utc": "2026-10-30T05:34:32Z",
+      "image_filename": "rain-nc.png",
+      "image_sha256": "8699c2e4d242eb0bdf0b5ca5d962c819eb75d4ae3495d18fa656f2b30d356da2"
+    },
+    {
+      "source": "Explore Fall",
+      "source_urls": [
+        "https://www.explorefall.com/maps/2026-highres/20261030.png",
+        "https://www.explorefall.com/fall-foliage-map"
+      ],
+      "source_date": "2026-10-30",
+      "forecast_valid_date": "2026-10-30",
+      "kind": "Explore Fall published daily foliage-model estimate, not a direct observation",
+      "valid_start_utc": "2026-10-30T00:00:00Z",
+      "valid_end_utc": "2026-10-31T00:00:00Z",
+      "georeferencing": "Publisher Web Mercator image bounds: west -126, east -65, south 23, north 52",
+      "location_api_status": "API access returned HTTP 403; no peak-date API forecast is claimed",
+      "id": "foliage-national",
+      "title": "NATIONAL FALL COLOR",
+      "subtitle": "EXPLORE FALL / DATED FOLIAGE-MODEL ESTIMATE",
+      "type": "foliage",
+      "region": "national",
+      "cities": [
+        {
+          "name": "Seattle",
+          "lat": 47.606,
+          "lon": -122.332
+        },
+        {
+          "name": "Los Angeles",
+          "lat": 34.052,
+          "lon": -118.244
+        },
+        {
+          "name": "Denver",
+          "lat": 39.739,
+          "lon": -104.99
+        },
+        {
+          "name": "Dallas",
+          "lat": 32.777,
+          "lon": -96.797
+        },
+        {
+          "name": "Chicago",
+          "lat": 41.878,
+          "lon": -87.63
+        },
+        {
+          "name": "Charlotte",
+          "lat": 35.227,
+          "lon": -80.843
+        },
+        {
+          "name": "New York",
+          "lat": 40.713,
+          "lon": -74.006
+        },
+        {
+          "name": "Miami",
+          "lat": 25.762,
+          "lon": -80.192
+        }
+      ],
+      "generated_at_utc": "2026-10-30T05:34:32Z",
+      "image_filename": "foliage-national.png",
+      "image_sha256": "fef4595e86d2f88b4db960607cb32353235ffbda34a40e238f739dfa262f7db6"
+    },
+    {
+      "source": "Explore Fall",
+      "source_urls": [
+        "https://www.explorefall.com/maps/2026-highres/20261030.png",
+        "https://www.explorefall.com/fall-foliage-map"
+      ],
+      "source_date": "2026-10-30",
+      "forecast_valid_date": "2026-10-30",
+      "kind": "Explore Fall published daily foliage-model estimate, not a direct observation",
+      "valid_start_utc": "2026-10-30T00:00:00Z",
+      "valid_end_utc": "2026-10-31T00:00:00Z",
+      "georeferencing": "Publisher Web Mercator image bounds: west -126, east -65, south 23, north 52",
+      "location_api_status": "API access returned HTTP 403; no peak-date API forecast is claimed",
+      "id": "foliage-nc",
+      "title": "CAROLINA FALL COLOR",
+      "subtitle": "EXPLORE FALL / DATED FOLIAGE-MODEL ESTIMATE",
+      "type": "foliage",
+      "region": "nc",
+      "cities": [
+        {
+          "name": "Asheville",
+          "lat": 35.595,
+          "lon": -82.552
+        },
+        {
+          "name": "Charlotte",
+          "lat": 35.227,
+          "lon": -80.843
+        },
+        {
+          "name": "Boone",
+          "lat": 36.217,
+          "lon": -81.674
+        },
+        {
+          "name": "Greensboro",
+          "lat": 36.073,
+          "lon": -79.792
+        },
+        {
+          "name": "Raleigh",
+          "lat": 35.78,
+          "lon": -78.638
+        },
+        {
+          "name": "Fayetteville",
+          "lat": 35.053,
+          "lon": -78.878
+        },
+        {
+          "name": "Wilmington",
+          "lat": 34.226,
+          "lon": -77.945
+        },
+        {
+          "name": "Greenville",
+          "lat": 35.612,
+          "lon": -77.366
+        },
+        {
+          "name": "Elizabeth City",
+          "lat": 36.295,
+          "lon": -76.251
+        }
+      ],
+      "generated_at_utc": "2026-10-30T05:34:32Z",
+      "image_filename": "foliage-nc.png",
+      "image_sha256": "5cb55ddf4f7521e721f372a806fa786c177644623d310b90751a1bb4a1e5d41a"
+    }
+  ],
+  "foliage_status": "available"
+}

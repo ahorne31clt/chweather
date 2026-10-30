@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 from shapely import intersects_xy
+from shapely.geometry import mapping
 
 from .data import session,fetch_forecast,geography
 from .model import MODEL_VERSION,MIN_SEPARATION_KM,solar_sunset,calculate,top_locations
@@ -47,7 +48,7 @@ def run(args):
         model='NOAA/NCEP GFS 0.25 degree',model_run=model_run.isoformat().replace('+00:00','Z'),
         forecast_valid_date=day.isoformat(),valid_timezone_basis='Each location’s sunset on this calendar date',
         generated_at_utc=datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00','Z'),
-        image_filename='latest.png',image_width=2400,image_height=1500,
+        image_filename='latest.png',lookup_filename='lookup.json',image_width=2400,image_height=1500,
         native_grid_degrees=.25,forecast_valid_times_utc=[
             (datetime(day.year,day.month,day.day,tzinfo=timezone.utc)+timedelta(hours=float(h))).isoformat().replace('+00:00','Z') for h in hours],
         minimum_top_location_separation_km=MIN_SEPARATION_KM,top_locations=places,
@@ -63,9 +64,20 @@ def run(args):
         image=Path(temporary)/'latest.png'; manifest=Path(temporary)/'latest.json'
         render(image,ROOT,target_lat,target_lon,score,mask,usa,countries,states,metadata)
         metadata['image_sha256']=hashlib.sha256(image.read_bytes()).hexdigest()
+        lookup=dict(schema_version=1,model_run=metadata['model_run'],
+            forecast_valid_date=metadata['forecast_valid_date'],generated_at_utc=metadata['generated_at_utc'],
+            image_sha256=metadata['image_sha256'],grid_degrees=.25,
+            latitudes=target_lat.tolist(),longitudes=target_lon.tolist(),
+            scores=[[round(float(score[y,x]),1) if mask[y,x] else None for x in range(len(target_lon))] for y in range(len(target_lat))],
+            sunset_minutes_utc=[[round(float(sunset_hours[y,x])*60) if mask[y,x] else None for x in range(len(target_lon))] for y in range(len(target_lat))],
+            land_geometry=mapping(usa.simplify(.015,preserve_topology=True)))
+        lookup_path=Path(temporary)/'lookup.json'
+        lookup_path.write_text(json.dumps(lookup,separators=(',',':'),allow_nan=False),encoding='utf-8')
+        metadata['lookup_sha256']=hashlib.sha256(lookup_path.read_bytes()).hexdigest()
         manifest.write_text(json.dumps(metadata,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
         json.loads(manifest.read_text(encoding='utf-8'))
         os.replace(image,output/'latest.png')
+        os.replace(lookup_path,output/'lookup.json')
         os.replace(manifest,output/'latest.json')
     LOG.info('Saved %s and %s; run %s',output/'latest.png',output/'latest.json',metadata['model_run'])
     return metadata

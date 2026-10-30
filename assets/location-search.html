@@ -1,0 +1,9 @@
+<section class="section location-search" aria-labelledby="location-heading" data-location-manifest="../generated/sunset/latest.json">
+  <p class="eyebrow">YOUR LOCATION / SAME FORECAST GRID</p>
+  <h2 id="location-heading">Find your sunset outlook.</h2>
+  <form class="location-form"><label for="location-query">City and state, ZIP code, or latitude, longitude</label><div class="location-controls"><input id="location-query" name="location" type="search" placeholder="Charlotte, NC or 28202" autocomplete="off" maxlength="120" required><button class="button primary" type="submit">Find location <span>→</span></button><button class="button" type="button" data-use-location>Use my location</button></div></form>
+  <p class="location-status" role="status" aria-live="polite">Search within the contiguous United States. This is a model-grid estimate, not a street-level forecast.</p>
+  <div class="location-matches" role="group" aria-label="Choose a matching location"></div>
+  <div class="location-result" hidden></div>
+  <p class="source-note">Location search: <a href="https://open-meteo.com/en/docs/geocoding-api">Open-Meteo</a> / <a href="https://www.geonames.org/">GeoNames</a>. Search text is sent to the geocoder only when you submit it. Coordinates from “Use my location” stay in your browser; the sunset score is read from our published grid.</p>
+</section>
