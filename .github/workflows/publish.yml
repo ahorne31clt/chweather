@@ -1,0 +1,56 @@
+name: Publish latest weather website
+
+on:
+  workflow_run:
+    workflows: [Daily weather and sunset outlooks, Scheduled weather models]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '**/*.html'
+      - 'assets/**'
+      - 'docs/**'
+      - 'CNAME'
+      - 'README.md'
+      - '.github/workflows/publish.yml'
+
+concurrency:
+  group: weather-publication
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+jobs:
+  publish:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Collect newest successful outlooks and independent model bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m scripts.collect_publication
+      - name: Validate and assemble the complete website
+        run: |
+          python scripts/package_site.py --check
+          python scripts/package_site.py --output-dir _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+      - name: Publish latest successful weather products together
+        id: deployment
+        uses: actions/deploy-pages@v4
