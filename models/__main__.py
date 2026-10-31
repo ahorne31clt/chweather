@@ -116,13 +116,15 @@ def run(args):
                 for image in frame['images'].values():
                     filename=image['image_filename'];keep.add(filename)
                     os.replace(staging/filename,output/filename)
+                    if image.get('overlay_filename'):
+                        filename=image['overlay_filename'];keep.add(filename);os.replace(staging/filename,output/filename)
                 if frame.get('readouts'):
                     filename=frame['readouts']['filename'];keep.add(filename)
                     os.replace(staging/filename,output/filename)
         os.replace(manifest_path,output/'latest.json')
         # Only remove this generator's obsolete frames, within the fixed output directory.
         for path in output.iterdir():
-            if path.suffix not in ('.png','.bin'):continue
+            if path.suffix not in ('.png','.bin','.webp') and not path.name.endswith('.bin.gz'):continue
             if path.name not in keep and path.name.startswith(('gfs-','hrrr-','nam-')):path.unlink()
     LOG.info('Published %d model cycles, %d frames',len(available),sum(len(r['frames']) for r in available))
     return manifest

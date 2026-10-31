@@ -105,11 +105,12 @@ def test_processing_and_render_failure_preserve_last_success(tmp_path,monkeypatc
     lat=np.arange(20,54.01,.25);lon=np.arange(-132,-61.99,.25)
     shape=(105,237)
     monkeypatch.setattr(pipeline,'fetch_forecast',lambda *_: (
-        datetime.now(timezone.utc),lat,lon,np.array([18.,30.]),{},[]))
+        datetime.now(timezone.utc),{},np.array([18.,30.]),{},[]))
     monkeypatch.setattr(pipeline,'geography',lambda *_: (box(-125,24,-66,50),[],[]))
     def calculation(*_):
         if stage=='processing':raise ValueError('deliberate processing failure')
-        return np.full(shape,50.),np.full(shape,24.),{}
+        yy,xx=np.meshgrid(np.linspace(24,50,shape[0]),np.linspace(-125,-66,shape[1]),indexing='ij')
+        return yy,xx,np.full(shape,50.),np.full(shape,24.),np.ones(shape,dtype=bool),1.,None,None,None
     monkeypatch.setattr(pipeline,'calculate',calculation)
     def bad_render(*_):raise RuntimeError('deliberate rendering failure')
     monkeypatch.setattr(pipeline,'render',bad_render)
@@ -127,3 +128,30 @@ def test_ready_run_fallback_is_bounded():
     cycles=candidate_runs(now)
     assert [r.hour for r in cycles]==[6,0,18]
     assert all((now-r).total_seconds()<86400 for r in cycles)
+
+
+def test_hrrr_extended_cycles_cover_next_utc_day_and_reject_short_cycles():
+    from sunset.hrrr import candidate_runs, required_leads
+    now=datetime(2026,6,21,12,tzinfo=timezone.utc)
+    runs=candidate_runs(now)
+    assert [r.hour for r in runs]==[6,0,18]
+    lat,lon=np.meshgrid(np.arange(24,50.01,.25),np.arange(-125,-65.99,.25),indexing='ij')
+    hours,_=solar_sunset(date(2026,6,21),lat,lon)
+    assert hours.max()>24
+    for run in runs:
+        leads,offset=required_leads(run,date(2026,6,21),hours.min(),hours.max())
+        assert leads[0]-offset < hours.min()
+        assert leads[-1]-offset > hours.max()
+        assert leads[-1]<=48
+        assert np.all(np.diff(leads)==1)
+    with pytest.raises(ValueError,match='48-hour'):
+        required_leads(now.replace(hour=7),date(2026,6,21),21,29)
+    with pytest.raises(ValueError,match='48-hour'):
+        required_leads(now,date(2026,6,23),21,29)
+
+
+def test_hrrr_missing_fields_rejected(tmp_path):
+    from sunset.hrrr import read_grib
+    path=tmp_path/'empty.grib2';path.write_bytes(b'')
+    with pytest.raises(ValueError,match='Missing required HRRR'):
+        read_grib(path,datetime(2026,10,30,6,tzinfo=timezone.utc),20)

@@ -35,12 +35,12 @@ def render(path, root, latitudes, longitudes, score, mask, usa, countries, state
         ax.set_facecolor('#121817')
         ax.set_extent([-125, -66, 24, 50],crs=ccrs.PlateCarree())
         ax.add_geometries(countries,ccrs.PlateCarree(),facecolor='#222827',edgecolor='#52615a',linewidth=.45,zorder=1)
-        lon,lat=np.meshgrid(longitudes,latitudes)
+        lat,lon=(latitudes,longitudes) if np.ndim(latitudes)==2 else tuple(reversed(np.meshgrid(longitudes,latitudes)))
         values=np.ma.masked_where(~mask,score)
         cmap=ListedColormap(COLORS)
         ax.contourf(lon,lat,values,levels=[0,20,40,60,80,100.001],cmap=cmap,
                     norm=BoundaryNorm([0,20,40,60,80,100.001],5),transform=ccrs.PlateCarree(),
-                    corner_mask=False,zorder=2,antialiased=False)
+                    corner_mask=False,zorder=2,antialiased=False,transform_first=True)
         ax.add_geometries([usa],ccrs.PlateCarree(),facecolor='none',edgecolor='#a8b5ab',linewidth=.65,zorder=4)
         ax.add_geometries(states,ccrs.PlateCarree(),facecolor='none',edgecolor='#a0b2a677',linewidth=.4,zorder=4)
         # Context labels kept quiet; the national maxima are numbered separately.
@@ -62,7 +62,7 @@ def render(path, root, latitudes, longitudes, score, mask, usa, countries, state
             ax.text(x,y,str(place['rank']),ha='center',va='center',fontsize=9,weight='bold',
                     transform=ccrs.PlateCarree(),zorder=9)
         ax.spines['geo'].set_edgecolor('#52615a')
-        fig.text(.025,.84,'LOCAL SUNSET TIME • 0.25° MODEL INPUT',fontsize=8,color=WHITE,
+        fig.text(.025,.84,'LOCAL SUNSET TIME • HRRR 3 KM / HOURLY',fontsize=8,color=WHITE,
                  bbox=dict(facecolor=BG,edgecolor='none',pad=7))
         sidebar=fig.add_axes([.79,.135,.195,.733]); sidebar.set_facecolor(BG); sidebar.set_xlim(0,1);sidebar.set_ylim(0,1);sidebar.axis('off')
         sidebar.text(0,.97,'COLOR POTENTIAL',weight='bold',fontsize=12)
@@ -84,7 +84,7 @@ def render(path, root, latitudes, longitudes, score, mask, usa, countries, state
         fig.add_artist(plt.Line2D([.014,.986],[.112,.112],color=GOLD,lw=.8,transform=fig.transFigure))
         fig.text(.02,.083,'CH WEATHER',weight='bold',fontsize=12)
         fig.text(.16,.083,'Cloud placement can change. An open western horizon helps.',fontsize=10)
-        fig.text(.02,.054,f"NOAA/NCEP GFS 0.25° · Run {metadata['model_run']} · Natural Earth boundaries",fontsize=8,color=SAGE)
+        fig.text(.02,.054,f"NOAA/NCEP HRRR 3 km · Run {metadata['model_run']} · Natural Earth boundaries",fontsize=8,color=SAGE)
         fig.text(.02,.029,f"Generated {metadata['generated_at_utc']}  |  Student meteorologist Christopher Horne  |  @chornewx",fontsize=8,color=SAGE)
         fig.text(.985,.029,'Experimental guidance, not an NWS/SPC product.',ha='right',fontsize=8,color=GOLD)
         fig.savefig(path,dpi=150,facecolor=BG,metadata={'Title':'CH Weather experimental sunset outlook'})

@@ -19,7 +19,11 @@ def render_products(staging,root,model,cycle,hour,fields,grid,geo,url):
         result=render(target,root,model,cycle,hour,fields,grid,geo,product)
         images[product]=dict(image_filename=filename,image_sha256=hashlib.sha256(target.read_bytes()).hexdigest())
         if isinstance(result,dict):
-            lookup=result;lookup['sha256']=hashlib.sha256((Path(staging)/lookup['filename']).read_bytes()).hexdigest()
+            if result.get('readouts'):
+                lookup=result['readouts'];lookup['sha256']=hashlib.sha256((Path(staging)/lookup['filename']).read_bytes()).hexdigest()
+            if result.get('overlay'):
+                overlay=result['overlay'];images[product]['overlay_filename']=overlay['filename']
+                images[product]['overlay_sha256']=hashlib.sha256((Path(staging)/overlay['filename']).read_bytes()).hexdigest()
     frame=dict(hour=hour,valid_time_utc=iso(cycle+timedelta(hours=hour)),**images.get('precip',images['temp2m']),images=images,source_url=url)
     endpoint,query=surface_request_details(model,cycle,hour)
     frame['surface_source_url']=requests.Request('GET',endpoint,params=query).prepare().url

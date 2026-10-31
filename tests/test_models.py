@@ -117,8 +117,10 @@ def test_binary_readouts_preserve_units_and_mask_map_margins(tmp_path):
     fields={'temperature2':np.full((20,30),273.15),'dewpoint2':np.full((20,30),263.15)}
     try:spec=write_readouts(tmp_path/'map.png',ax,fields,x,y,projection,projection)
     finally:plt.close(fig)
-    values=np.frombuffer((tmp_path/spec['filename']).read_bytes(),dtype='<i2').reshape(2,spec['height'],spec['width'])
-    valid=values[0]!=-32768
+    import gzip
+    delta=np.frombuffer(gzip.decompress((tmp_path/spec['filename']).read_bytes()),dtype='<i4').reshape(2,spec['height'],spec['width'])
+    values=np.cumsum(delta.astype(np.int64),axis=2).astype(np.int32)
+    valid=values[0]!=-2147483648
     assert valid.any() and (~valid).any()
     assert np.all(values[0][valid]==320) and np.all(values[1][valid]==140)
 

@@ -6,7 +6,7 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage import gaussian_filter
 
-MODEL_VERSION = 'ch-sunset-1.0.0'
+MODEL_VERSION = 'ch-sunset-2.0.0'
 MIN_SEPARATION_KM = 600
 
 
@@ -97,7 +97,10 @@ def calculate(day, latitudes, longitudes, valid_hours, fields):
 
 
 def top_locations(score, latitudes, longitudes, mask, cities, sunset_hours, day, count=3):
-    lon, lat = np.meshgrid(longitudes, latitudes)
+    if np.ndim(latitudes) == 2:
+        lat, lon = latitudes, longitudes
+    else:
+        lon, lat = np.meshgrid(longitudes, latitudes)
     candidates = np.where(mask, score, -np.inf).copy()
     selected = []
     midnight = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)

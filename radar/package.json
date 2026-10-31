@@ -1,0 +1,1 @@
+{"name":"chweather-radar","private":true,"type":"module","scripts":{"build":"node build.mjs","test":"node --test test.mjs"},"dependencies":{"nexrad-level-2-data":"3.0.2","@foxglove/wasm-bz2":"0.3.0","fast-png":"7.0.1","leaflet":"1.9.4"},"devDependencies":{"esbuild":"0.25.12"}}

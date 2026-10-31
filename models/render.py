@@ -65,23 +65,8 @@ def grid_sample(values,x,y,source_crs,projection,xx,yy):
 
 
 def write_readouts(path,ax,fields,x,y,source_crs,projection):
-    """Nearest native samples on a 4-image-pixel display grid, not observations."""
-    ax.apply_aspect()
-    left,bottom,width,height=ax.get_position().bounds
-    xx,yy=np.meshgrid(np.arange(2,2400,4),np.arange(2,1350,4))
-    xmin,xmax=ax.get_xlim();ymin,ymax=ax.get_ylim()
-    fx=(xx/2400-left)/width;fy=(1-yy/1350-bottom)/height
-    inside=(fx>=0)&(fx<=1)&(fy>=0)&(fy<=1)
-    arrays=[]
-    for key in ['temperature2','dewpoint2']:
-        values=grid_sample((fields[key]-273.15)*1.8+32,x,y,source_crs,projection,xmin+fx*(xmax-xmin),ymin+fy*(ymax-ymin))
-        finite=inside&np.isfinite(values)
-        encoded=np.full(xx.shape,-32768,dtype='<i2')
-        encoded[finite]=np.rint(values[finite]*10).astype(np.int16)
-        arrays.append(encoded)
-    target=Path(path).with_name(Path(path).stem.removesuffix('-temp2m')+'.bin');target.write_bytes(np.stack(arrays).tobytes())
-    return dict(filename=target.name,width=xx.shape[1],height=xx.shape[0],cell_pixels=4,scale=10,missing=-32768,
-                fields=['temperature2','dewpoint2'],units='°F',method='Nearest native model sample on 4-image-pixel display grid')
+    from .readouts import write_grid
+    return write_grid(path,ax,fields,x,y,source_crs,projection,grid_sample)
 
 
 def draw_wind_barbs(ax,grid,x,y,fields,projection,source_crs,level='500'):
@@ -135,7 +120,7 @@ def region_presets(grid):
     finally:plt.close(fig)
 
 
-def render(path,root,model,run,hour,fields,grid,geo,product='precip'):
+def render(path,root,model,run,hour,fields,grid,geo,product='precip',overlay_only=False):
     config=PRODUCTS[product];lookup=None
     plt.rcParams.update({'font.family':'DejaVu Sans','text.color':WHITE,'font.size':9})
     figure=plt.figure(figsize=(16,9),dpi=150,facecolor=BG)
@@ -144,7 +129,7 @@ def render(path,root,model,run,hour,fields,grid,geo,product='precip'):
         ax=figure.add_axes([.004,.055,.992,.874],projection=projection)
         ax.set_extent([-126,-65,23.5,50.5],crs=ccrs.PlateCarree())
         ax.set_facecolor('#141c19')
-        ax.add_geometries(geo['countries'],ccrs.PlateCarree(),facecolor='#232a26',edgecolor='#5d6c60',linewidth=.45,zorder=1)
+        land_artist=ax.add_geometries(geo['countries'],ccrs.PlateCarree(),facecolor='#232a26',edgecolor='#5d6c60',linewidth=.45,zorder=1)
         if product=='precip':kind,rate,rgba=classify(fields)
         else:
             scalar=scalar_field(fields,product)
@@ -160,7 +145,7 @@ def render(path,root,model,run,hour,fields,grid,geo,product='precip'):
             origin='lower' if grid['j_positive'] else 'upper'
             pixels=rgba[:,::-1] if grid['i_negative'] else rgba
             extent=[min(x)-grid['dx']/2,max(x)+grid['dx']/2,min(y)-grid['dy']/2,max(y)+grid['dy']/2]
-            ax.imshow(pixels,origin=origin,extent=extent,transform=projection,interpolation='nearest',zorder=2)
+            field_artist=ax.imshow(pixels,origin=origin,extent=extent,transform=projection,interpolation='nearest',zorder=2)
             step=4
             cx,cy=x[::step],y[::step]
             pres=gaussian_filter(pressure,sigma=3)[::step,::step]
@@ -168,7 +153,7 @@ def render(path,root,model,run,hour,fields,grid,geo,product='precip'):
             transform=projection
         else:
             x,y=grid['longitudes'],grid['latitudes']
-            ax.pcolormesh(x,y,rgba,transform=ccrs.PlateCarree(),shading='nearest',rasterized=True,zorder=2)
+            field_artist=ax.pcolormesh(x,y,rgba,transform=ccrs.PlateCarree(),shading='nearest',rasterized=True,zorder=2)
             cx,cy=x,y;pres=gaussian_filter(pressure,sigma=.6);thick=gaussian_filter(thickness,sigma=.6)
             transform=ccrs.PlateCarree()
         contours=[]
@@ -211,10 +196,10 @@ def render(path,root,model,run,hour,fields,grid,geo,product='precip'):
                     text.set_path_effects([effects.withStroke(linewidth=2.8,foreground=BG)])
         if product=='precip':
             draw_pressure_centers(ax,pres,cx,cy,transform,projection)
-            if {'temperature2','dewpoint2'}<=set(fields):lookup=write_readouts(path,ax,fields,x,y,transform,projection)
+            if not overlay_only and {'temperature2','dewpoint2'}<=set(fields):lookup=write_readouts(path,ax,fields,x,y,transform,projection)
         elif product in ('temp2m','dewpoint2m'):
             draw_dense_values(ax,scalar,x,y,transform,projection,geo['usa'],cities)
-            if model=='nam' and product=='temp2m':lookup=write_readouts(path,ax,fields,x,y,transform,projection)
+            if not overlay_only and model=='nam' and product=='temp2m':lookup=write_readouts(path,ax,fields,x,y,transform,projection)
         elif product=='wind500':draw_wind_barbs(ax,grid,x,y,fields,projection,transform)
         elif product=='wind10':draw_wind_barbs(ax,grid,x,y,fields,projection,transform,level='10')
         elif product=='mslp':draw_pressure_centers(ax,pres,cx,cy,transform,projection)
@@ -241,10 +226,22 @@ def render(path,root,model,run,hour,fields,grid,geo,product='precip'):
             figure.text(.99,.027,'MODEL GUIDANCE · '+context.get(product,'500 MB / APPROX. 18,000 FT'),fontsize=7,color=SAGE,ha='right')
         figure.text(.012,.005,'NOAA/NCEP model guidance · Natural Earth · CH Weather / Christopher Horne',fontsize=6.5,color=SAGE)
         figure.text(.99,.005,'Not an official warning or forecast',fontsize=6.5,color=SAGE,ha='right')
-        figure.savefig(path,dpi=150,facecolor=BG)
+        if not overlay_only:figure.savefig(path,dpi=150,facecolor=BG)
+        overlay=None
+        if product!='precip':
+            field_artist.set_visible(False);land_artist.set_facecolor('none')
+            overlay_path=Path(path).with_name(Path(path).stem+'-overlay.png')
+            figure.savefig(overlay_path,dpi=150,transparent=True)
+            with Image.open(overlay_path) as source:
+                optimized_overlay=source.convert('RGBA').quantize(colors=256,method=Image.Quantize.FASTOCTREE)
+            webp_path=overlay_path.with_suffix('.webp')
+            optimized_overlay.convert('RGBA').save(webp_path,format='WEBP',lossless=True,method=2)
+            overlay_path.unlink();overlay_path=webp_path
+            overlay=dict(filename=overlay_path.name)
     finally:plt.close(figure)
-    with Image.open(path) as image:
-        if image.size!=(2400,1350):raise ValueError('Incorrect model graphic dimensions')
-        optimized=image.convert('RGB').quantize(colors=256,method=Image.Quantize.FASTOCTREE)
-    optimized.save(path,optimize=True)
-    return lookup
+    if not overlay_only:
+        with Image.open(path) as image:
+            if image.size!=(2400,1350):raise ValueError('Incorrect model graphic dimensions')
+            optimized=image.convert('RGB').quantize(colors=256,method=Image.Quantize.FASTOCTREE)
+        optimized.save(path,optimize=True)
+    return dict(readouts=lookup,overlay=overlay)
