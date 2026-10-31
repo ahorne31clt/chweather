@@ -10,6 +10,7 @@ def package():
     files=set(site_files(include_generated=False))
     files.update(ROOT/path for path in ['.gitignore','.github/workflows/sunset.yml',
                   'requirements-sunset.txt','requirements-sunset-dev.txt'])
+    files.update((ROOT/'.github/workflows').glob('*.yml'))
     for directory in ['sunset','weather','models','tropical','centers','analysis','ensembles','enso','scripts','tests']:
         files.update((ROOT/directory).glob('*.py'))
     files.add(ROOT/'sunset/cities.json')
@@ -26,7 +27,14 @@ def package():
             for path in ordered[start:start+90]:
                 archive.write(path,path.relative_to(ROOT).as_posix())
         print(f'Upload batch: {batch.name} ({len(ordered[start:start+90])} files)')
-    shutil.copy2(ROOT/'.github/workflows/sunset.yml',out.parent/'sunset.yml')
+    for workflow in (ROOT/'.github/workflows').glob('*.yml'):
+        shutil.copy2(workflow,out.parent/workflow.name)
+    changed=['.github/workflows/sunset.yml','.github/workflows/models.yml','.github/workflows/publish.yml',
+             'models/__main__.py','scripts/merge_models.py','scripts/collect_publication.py','scripts/package_github.py',
+             'tests/test_independent_publication.py','tests/test_packaging.py','tests/test_model_selection.py',
+             'README.md','docs/REFRESHES.md','docs/MODELS.md','docs/FIX-AUTOMATIC-UPDATES.md']
+    with ZipFile(out.parent/'ch-weather-model-split-update.zip','w',ZIP_DEFLATED) as archive:
+        for name in changed:archive.write(ROOT/name,name)
 
 
 if __name__=='__main__':package()
