@@ -2,7 +2,9 @@
 
 Static HTML, CSS, and JavaScript. No build system, account, or paid service required.
 
-**Independent automatic updates:** upload all three workflows: `sunset.yml` for outlooks, `models.yml` for separate parallel GFS/HRRR/NAM jobs four times daily, and `publish.yml` to combine the newest successful bundles. Slow model rendering no longer blocks sunset or outlook updates. Follow [the exact upload and activation steps](docs/FIX-AUTOMATIC-UPDATES.md).
+**Independent automatic updates:** upload all three workflows: `sunset.yml` for outlooks, `models.yml` for separate parallel GFS/HRRR/NAM jobs four times daily, and `publish.yml` to combine each newest validated product artifact. Slow model rendering no longer blocks sunset or outlook updates. Follow [the exact upload and activation steps](docs/FIX-AUTOMATIC-UPDATES.md).
+
+**Partial failures now publish safely:** successful product artifacts upload even when another job fails, and the publisher retains previous successful data with its original timestamps. The NDFD nominal-cycle timing check is repaired. See [the current update instructions](docs/PARTIAL-UPDATES.md).
 
 ## Weather outlooks and location search
 
