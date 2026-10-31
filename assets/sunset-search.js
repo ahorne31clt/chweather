@@ -40,6 +40,24 @@ if (locationSection) {
       if (grid.forecast_valid_date!==meta.forecast_valid_date || grid.model_run!==meta.model_run || grid.image_sha256!==meta.image_sha256) {
         throw new Error('The forecast is updating. Refresh this page in a moment.');
       }
+      if (grid.schema_version===2) {
+        if(grid.data_filename!=='lookup.bin.gz' || grid.encoding!=='gzip-int16le-two-planes') throw new Error('Unsupported sunset grid format.');
+        const binaryURL=new URL(grid.data_filename,manifestURL);binaryURL.searchParams.set('v',grid.data_sha256);
+        const binaryResponse=await fetch(binaryURL,{signal:AbortSignal.timeout(20000)});
+        if(!binaryResponse.ok)throw new Error('The high-resolution sunset grid is unavailable.');
+        const compressed=await binaryResponse.arrayBuffer();
+        const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',compressed)),n=>n.toString(16).padStart(2,'0')).join('');
+        if(digest!==grid.data_sha256)throw new Error('The forecast is updating. Refresh in a moment.');
+        const decoded=await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+        const count=grid.latitudes.length*grid.longitudes.length;
+        if(decoded.byteLength!==count*4)throw new Error('Incomplete sunset grid.');
+        const values=new DataView(decoded);
+        grid.value=(plane,y,x)=>{
+          if(y<0||x<0||y>=grid.latitudes.length||x>=grid.longitudes.length)return null;
+          const value=values.getInt16((plane*count+y*grid.longitudes.length+x)*2,true);
+          return value===grid.missing_value?null:value/(plane===0?grid.score_scale:1);
+        };
+      } else grid.value=(plane,y,x)=>(plane===0?grid.scores:grid.sunset_minutes_utc)[y]?.[x]??null;
       return grid;
     })().catch(error=>{gridPromise=null;throw error;});
     return gridPromise;
@@ -63,14 +81,14 @@ if (locationSection) {
       let nearest;
       for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) {
         const y=row+dy,x=col+dx;
-        if (grid.scores[y]?.[x] == null) continue;
+        if (grid.value(0,y,x) == null) continue;
         const km=distance(lat,lon,grid.latitudes[y],grid.longitudes[x]);
         if (!nearest || km<nearest.km) nearest={y,x,km};
       }
       if (!nearest || nearest.km>35) throw new Error('No nearby land grid point is available for this location. Try a nearby inland location.');
-      const value=grid.scores[nearest.y][nearest.x];
+      const value=grid.value(0,nearest.y,nearest.x);
       const category=['Limited','Fair','Good','Very good','Excellent'][Math.min(4,Math.floor(value/20))];
-      const minutes=grid.sunset_minutes_utc[nearest.y][nearest.x];
+      const minutes=grid.value(1,nearest.y,nearest.x);
       const sunset=new Date(Date.parse(grid.forecast_valid_date+'T00:00:00Z')+minutes*60000);
       const timezone=point.timezone;
       const timeText = timezone ? new Intl.DateTimeFormat('en-US',{timeZone:timezone,hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(sunset) : sunset.toISOString().slice(11,16)+' UTC';
@@ -79,8 +97,8 @@ if (locationSection) {
       addText(results,'h3',point.name);
       addText(results,'p',`${value} / 100 · ${category}`,'location-score');
       addText(results,'p',`Approximate sunset: ${timeText}. Valid evening: ${grid.forecast_valid_date}.`);
-      addText(results,'p',`GFS run ${grid.model_run.replace('T',' ')} · Generated ${grid.generated_at_utc.replace('T',' ')}`,'muted');
-      addText(results,'p',`Nearest 0.25° grid point: ${grid.latitudes[nearest.y].toFixed(2)}°N, ${Math.abs(grid.longitudes[nearest.x]).toFixed(2)}°W, ${nearest.km.toFixed(1)} km from your location. This index is not a probability or a guarantee of color.`,'source-note');
+      addText(results,'p',`${grid.model||'GFS'} run ${grid.model_run.replace('T',' ')} · Generated ${grid.generated_at_utc.replace('T',' ')}`,'muted');
+      addText(results,'p',`Nearest ${grid.grid_degrees}° lookup point: ${grid.latitudes[nearest.y].toFixed(2)}°N, ${Math.abs(grid.longitudes[nearest.x]).toFixed(2)}°W, ${nearest.km.toFixed(1)} km from your location. ${grid.native_grid_km?'Sampled from native 3-km HRRR guidance. ':''}This index is not a probability or a guarantee of color.`,'source-note');
       const today = new Intl.DateTimeFormat('en-CA',{timeZone:timezone||'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
       if (grid.forecast_valid_date!==today) addText(results,'p','This forecast is dated '+grid.forecast_valid_date+', not today. A newer forecast is not available yet.','sunset-status sunset-stale');
       results.hidden=false;

@@ -7,6 +7,7 @@
   const base=new URL('../generated/models/airports/latest.json',document.baseURI);
   let metadata,catalog,selectedAirport,activeModel,series=[],selectedIndex=0,request=0;
   const buckets=new Map();
+  window.addEventListener('chweather:model-manifest-update',()=>{metadata=null;catalog=null;selectedAirport=undefined;activeModel=null;series=[];buckets.clear();content.hidden=true;});
   function time(value){return new Intl.DateTimeFormat('en-US',{timeZone:zone.value,month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(value));}
   async function bytes(url,hash){
     const response=await fetch(url,{signal:AbortSignal.timeout(20000)});if(!response.ok)throw new Error('Airport guidance is temporarily unavailable. Please try again later.');

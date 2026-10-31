@@ -6,7 +6,6 @@ if(modelStage){
   const region=document.querySelector('#model-region'),loopStart=document.querySelector('#model-loop-start'),loopEnd=document.querySelector('#model-loop-end'),jump=document.querySelector('#model-jump');
   const initial=new URLSearchParams(location.search);
   let timeNotice='',runNotice='',fieldNotice='';
-  let readoutData=null,lastPointer=null;
   const prev=document.querySelector('#model-prev'),next=document.querySelector('#model-next'),play=document.querySelector('#model-play');
   const note=document.querySelector('#model-note'),zone=document.querySelector('#model-zone');
   const hourLabel=document.querySelector('#model-hour'),validLabel=document.querySelector('#model-valid');
@@ -23,39 +22,24 @@ if(modelStage){
     if(!image||!/^(gfs|hrrr|nam)-\d{10}-f\d{3}(-(temp2m|dewpoint2m|wind500|vort500|wind10|rh2m|mslp|sbcape))?\.png$/.test(image.image_filename))throw new Error('This field is not published for this model run.');
     const url=new URL(image.image_filename,base);url.searchParams.set('v',image.image_sha256);return url.href;
   }
-  function isSurface(){return ['temp2m','dewpoint2m'].includes(field.value);}
-  async function loadReadouts(frame,id){
-    readoutData=null;readout.hidden=!isSurface();
-    for(const key of ['temperature','dewpoint'])document.querySelector('#readout-'+key).textContent='—';
-    if(!isSurface())return;
-    const help=document.querySelector('#readout-note');help.textContent='Loading map readouts…';
-    try{
-      const spec=frame.readouts;
-      if(!spec||!/^(gfs|hrrr|nam)-\d{10}-f\d{3}\.bin$/.test(spec.filename))throw new Error('Readouts are unavailable for this frame.');
-      const url=new URL(spec.filename,base);url.searchParams.set('v',spec.sha256);
-      const response=await fetch(url,{signal:AbortSignal.timeout(12000)});if(!response.ok)throw new Error('Readouts are temporarily unavailable.');
-      const buffer=await response.arrayBuffer();
-      if(buffer.byteLength!==spec.width*spec.height*4||spec.scale!==10||![4,8].includes(spec.cell_pixels))throw new Error('Map readouts could not be verified.');
-      if(crypto.subtle&&spec.sha256){const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',buffer)),n=>n.toString(16).padStart(2,'0')).join('');if(hash!==spec.sha256)throw new Error('Map readouts could not be verified.');}
-      if(id!==requestID)return;
-      readoutData={spec,view:new DataView(buffer)};help.textContent='Move over the map or tap · nearest model sample.';
-      if(lastPointer)samplePointer(lastPointer);
-    }catch(error){if(id!==requestID)return;help.textContent=error.message+' City labels remain available.';}
+  const smoothing=document.querySelector('#model-smoothing');
+  let smoothingPreference=smoothing.value;
+  const probe=new CHModelProbe(modelStage,map,readout);
+  function loadReadouts(frame,id){
+    const definition=manifest.products?.find(p=>p.id===field.value);
+    smoothing.disabled=field.value==='precip';
+    smoothing.value=smoothing.disabled?'off':smoothingPreference;
+    probe.load(frame,field.value,definition);
+    probe.mode=smoothing.disabled?'off':smoothing.value;
+    if(probe.mode!=='off')probe.setMode(probe.mode);
+    updateURL();
   }
-  function samplePointer(event){
-    if(!isSurface()||map.hidden||event.target.closest('button'))return;
-    lastPointer={clientX:event.clientX,clientY:event.clientY,target:modelStage};
-    if(!readoutData)return;
-    const rect=modelStage.getBoundingClientRect(),fit=Math.min(rect.width/2400,rect.height/1350);
-    const px=((event.clientX-rect.left-rect.width/2-panX)/zoom)/fit+1200;
-    const py=((event.clientY-rect.top-rect.height/2-panY)/zoom)/fit+675;
-    const {spec,view}=readoutData,col=Math.floor(px/spec.cell_pixels),row=Math.floor(py/spec.cell_pixels);
-    const inside=col>=0&&col<spec.width&&row>=0&&row<spec.height;
-    for(const [i,key] of ['temperature','dewpoint'].entries()){
-      const value=inside?view.getInt16((i*spec.width*spec.height+row*spec.width+col)*2,true):spec.missing;
-      document.querySelector('#readout-'+key).textContent=value===spec.missing?'—':(value/spec.scale).toFixed(1)+'°F';
-    }
-  }
+  function samplePointer(event){probe.pointer(event);}
+  smoothing.addEventListener('change',()=>{smoothingPreference=smoothing.value;probe.setMode(smoothing.value);updateURL();});
+  download.addEventListener('click',event=>{
+    if(probe.canvas.hidden)return;
+    event.preventDefault();probe.canvas.toBlob(blob=>{if(!blob)return;const link=document.createElement('a'),url=URL.createObjectURL(blob);link.href=url;link.download=model.id+'-F'+model.frames[index].hour+'-'+field.value+'-smoothed.png';link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);},'image/png');
+  });
   function loadImage(url){
     if(pendingImages.has(url))return pendingImages.get(url);
     const promise=new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('This model frame could not be loaded. Try another forecast hour or check back later.'));image.src=url;});
@@ -69,7 +53,7 @@ if(modelStage){
   function updateURL(){
     if(!model)return;const params=new URLSearchParams();
     params.set('model',model.id);params.set('field',field.value);params.set('hour',model.frames[index].hour);params.set('run',model.model_run);
-    params.set('region',region.value);params.set('zone',zone.value);params.set('from',model.frames[Number(loopStart.value)||0].hour);params.set('to',model.frames[Number(loopEnd.value)||0].hour);
+    params.set('smooth',smoothing.value);params.set('region',region.value);params.set('zone',zone.value);params.set('from',model.frames[Number(loopStart.value)||0].hour);params.set('to',model.frames[Number(loopEnd.value)||0].hour);
     if(region.value==='custom'){const fit=Math.min(modelStage.clientWidth/2400,modelStage.clientHeight/1350);params.set('zoom',zoom.toFixed(2));params.set('cx',(1200-panX/(fit*zoom)).toFixed(1));params.set('cy',(675-panY/(fit*zoom)).toFixed(1));}
     history.replaceState(null,'',location.pathname+'?'+params.toString());
   }
@@ -101,7 +85,7 @@ if(modelStage){
     panX=Math.max(-maxX,Math.min(maxX,panX));panY=Math.max(-maxY,Math.min(maxY,panY));
     map.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;
     modelStage.classList.toggle('is-zoomed',zoom>1);document.querySelector('#model-zoom-label').textContent=zoom.toFixed(1)+'×';
-    pinnedLegend();
+    pinnedLegend();probe.setView({zoom,panX,panY});
   }
   async function showFrame(target){
     if(!model)return;
@@ -109,7 +93,7 @@ if(modelStage){
     range.value=index;hourLabel.textContent='F'+String(frame.hour).padStart(3,'0');
     jump.value=index;updateURL();
     range.setAttribute('aria-valuetext',`Forecast hour ${frame.hour}; ${formatTime(frame.valid_time_utc,zone.value)}`);
-    modelStage.setAttribute('aria-busy','true');map.hidden=true;download.setAttribute('aria-disabled','true');readoutData=null;readout.hidden=true;
+    modelStage.setAttribute('aria-busy','true');map.hidden=true;download.setAttribute('aria-disabled','true');readout.hidden=true;probe.hideSmooth();
     displayMessage(`Loading ${model.name} F${String(frame.hour).padStart(3,'0')}…`);
     try{
       const url=fileURL(frame);await loadImage(url);if(id!==requestID)return;
@@ -179,7 +163,7 @@ if(modelStage){
   modelStage.addEventListener('pointermove',samplePointer);
   modelStage.addEventListener('click',samplePointer);
   for(const type of ['pointerup','pointercancel'])modelStage.addEventListener(type,()=>{if(drag)customView();drag=null;modelStage.classList.remove('is-dragging');});
-  window.addEventListener('resize',()=>{lastPointer=null;if(region.value==='custom')transformMap();else applyRegion();});
+  window.addEventListener('resize',()=>{probe.lastPointer=null;if(region.value==='custom')transformMap();else applyRegion();});
   document.querySelector('#model-info').addEventListener('click',()=>{stop();guide.showModal();});
   document.querySelector('#model-fullscreen').addEventListener('click',async()=>{
     try{if(document.fullscreenElement)await document.exitFullscreen();else await document.querySelector('.model-shell').requestFullscreen();}
@@ -193,7 +177,32 @@ if(modelStage){
     else if(event.key==='End'){event.preventDefault();stop();showFrame(Number(loopEnd.value));}
     else if(event.code==='Space'&&!event.target.closest('button,a')){event.preventDefault();play.click();}
   });
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
+  let checkingUpdate=false;
+  async function refreshPublishedModels(){
+    if(checkingUpdate||document.hidden||!manifest||!model||guide.open||document.querySelector('#airport-dialog')?.open)return;
+    checkingUpdate=true;
+    const status=document.querySelector('#model-tool-status');
+    try{
+      const response=await fetch(base,{cache:'no-store',signal:AbortSignal.timeout(15000)});
+      if(!response.ok)throw new Error('The latest published run could not be checked. Current run retained.');
+      const updated=await response.json();
+      if(!Number.isFinite(Date.parse(updated.generated_at_utc)))throw new Error('Updated publication time could not be verified. Current run retained.');
+      if(Date.parse(updated.generated_at_utc)<Date.parse(manifest.generated_at_utc))return;
+      const available=updated.models?.filter(item=>['gfs','hrrr','nam'].includes(item.id)&&item.status==='available'&&item.frames?.length);
+      if(!available?.length||available.some(item=>!Number.isFinite(Date.parse(item.model_run))||item.frames.some(frame=>!Number.isInteger(frame.hour)||!Number.isFinite(Date.parse(frame.valid_time_utc)))))throw new Error('Updated model metadata could not be verified. Current run retained.');
+      if(updated.generated_at_utc===manifest.generated_at_utc&&available.every(item=>manifest.models.some(old=>old.id===item.id&&old.model_run===item.model_run)))return;
+      const wanted=Date.parse(model.frames[index].valid_time_utc),nextModel=available.find(item=>item.id===model.id)||available[0];
+      stop();pendingImages.clear();manifest=updated;runNotice='Updated automatically to the latest published guidance · ';
+      for(const option of select.options)option.disabled=!available.some(item=>item.id===option.value);
+      window.dispatchEvent(new Event('chweather:model-manifest-update'));
+      selectModel(nextModel.id,wanted);
+      status.textContent='New model publication loaded automatically. Checking for updates every 5 minutes.';
+    }catch(error){status.textContent=error.message||'Update check failed; the displayed run is retained.';}
+    finally{checkingUpdate=false;}
+  }
+  setInterval(refreshPublishedModels,5*60*1000);
+  window.addEventListener('online',refreshPublishedModels);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();else refreshPublishedModels();});
   window.addEventListener('chweather:pause-model',stop);
   (async()=>{
     try{
@@ -204,6 +213,7 @@ if(modelStage){
       for(const item of available){if(!Number.isFinite(Date.parse(item.model_run))||item.frames.some(frame=>!Number.isInteger(frame.hour)||!Number.isFinite(Date.parse(frame.valid_time_utc))))throw new Error('Model metadata could not be read. Please check back later.');}
       for(const option of select.options){const item=available.find(item=>item.id===option.value);option.disabled=!item;if(!item)option.textContent=option.value.toUpperCase()+' unavailable';}
       for(const control of [select,field,range,prev,next,play])control.disabled=false;
+      if(['off','smooth'].includes(initial.get('smooth'))){smoothing.value=initial.get('smooth');smoothingPreference=smoothing.value;}
       if(Array.from(field.options).some(o=>o.value===initial.get('field')))field.value=initial.get('field');
       if(['UTC','America/New_York'].includes(initial.get('zone')))zone.value=initial.get('zone');
       const first=available.find(item=>item.id===initial.get('model'))||available.find(item=>item.id==='gfs')||available[0];

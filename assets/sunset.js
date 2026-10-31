@@ -32,7 +32,7 @@ document.querySelectorAll('[data-sunset-manifest]').forEach(async section => {
     const url = new URL(data.image_filename, manifestUrl);
     url.searchParams.set('v', data.image_sha256 || data.generated_at_utc);
     image.src = url.href;
-    image.alt = `Experimental sunset potential for ${data.forecast_valid_date}, using GFS run ${data.model_run}. Highlighted areas: ${data.top_locations.map(p => p.label).join('; ')}.`;
+    image.alt = `Experimental sunset potential for ${data.forecast_valid_date}, using HRRR run ${data.model_run}. Highlighted areas: ${data.top_locations.map(p => p.label).join('; ')}.`;
     imageLink.href = url.href;
     const picks = section.querySelector('.sunset-picks');
     for (const pick of data.top_locations) {
