@@ -95,49 +95,29 @@ jobs:
         timeout-minutes: 15
         run: |
           python -m pip install --only-binary=:all: --timeout 30 --retries 2 --disable-pip-version-check -r requirements-sunset.txt
+      - name: Clear checkout manifest before this generation attempt
+        run: python -c "from pathlib import Path; import os; Path('generated',os.environ['PRODUCT'],'latest.json').unlink(missing_ok=True)"
       - name: Generate from real source data
+        id: generate
         timeout-minutes: 95
         run: python -m "$PRODUCT"
       - name: Validate this generator's manifest and every referenced asset
+        id: validate
+        if: always() && (steps.generate.outcome == 'success' || steps.generate.outcome == 'failure')
         run: python scripts/package_site.py --check --product "$PRODUCT"
       - name: Stage only this job's output with its generated/product directory
+        id: stage
+        if: always() && steps.validate.outcome == 'success' 
         run: |
           mkdir -p "$RUNNER_TEMP/forecast/generated"
           cp -a "generated/$PRODUCT" "$RUNNER_TEMP/forecast/generated/"
       - name: Transfer validated outputs to the publishing job
+        if: always() && steps.stage.outcome == 'success' 
         uses: actions/upload-artifact@v7
         with:
           name: forecast-${{ matrix.product }}
           path: ${{ runner.temp }}/forecast/
           if-no-files-found: error
           compression-level: 0
-          retention-days: 1
-
-  bundle:
-    needs: [verify, generate]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: forecast-*
-          merge-multiple: true
-          path: .
-      - name: Validate and stage all seven outlook products
-        run: |
-          mkdir -p "$RUNNER_TEMP/outlooks/generated"
-          for product in sunset weather tropical centers enso analysis ensembles; do
-            python scripts/package_site.py --check --product "$product"
-            cp -a "generated/$product" "$RUNNER_TEMP/outlooks/generated/"
-          done
-      - uses: actions/upload-artifact@v7
-        with:
-          name: outlooks-bundle
-          path: ${{ runner.temp }}/outlooks/
-          compression-level: 0
           retention-days: 3
-          if-no-files-found: error
+
