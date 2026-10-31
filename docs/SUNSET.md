@@ -41,7 +41,7 @@ python -m pytest -q tests/test_sunset.py
 
 `--date` is the evening's calendar date at each location, not the UTC sunset date.
 The default date is today in **America/New_York**. UTC sunset hours can exceed 24
-in the western US. `--run` must be an available GFS cycle, at most 24 hours old,
+in the western US. `--run` must be an available extended HRRR cycle (00/06/12/18 UTC), at most 24 hours old,
 not in the future, with supported forecast leads. This command is not an archive
 backfill tool; NOMADS only retains recent data. A historical example eventually
 expires. Never change the date label without downloading data valid for it.
@@ -99,30 +99,19 @@ disable schedules on inactive public repositories after 60 days; check Actions
 if updates stop. The job has a 20-minute timeout and does not silently continue
 after failed tests, downloads, processing, or rendering.
 
-## Meteorological method, version ch-sunset-1.0.0
+## Meteorological method, version ch-sunset-2.0.0
 
 ### Input and spatial/temporal treatment
 
-- NOAA/NCEP **GFS 0.25°** `LCDC`, `MCDC`, `HCDC` instantaneous cloud cover (%)
-  and `VIS` surface visibility (m), from the public NOMADS GRIB filter.
-- Native domain downloaded: 20–54°N, 132–62°W, giving padding for sunward rays.
-  Scored domain: 24–50°N, 125–66°W, then masked to contiguous US land using
-  Natural Earth 1:50m countries. The image has 2400 × 1500 pixels; the weather
-  information is still roughly 20–28 km, **not** 1-km or street-level detail.
-- Select the most recent 00/06/12/18 UTC cycle with a four-hour publication
-  allowance. At 08:00 Eastern, the 06 UTC run is normally eligible. If a complete
-  cycle is unavailable, try the preceding two cycles (same run for all fields and
-  times); record the actual run. Never silently use yesterday's product as today.
-- Download only the three-hourly forecasts bracketing sunset across the domain.
-  No full global GRIB files are fetched. Use the NOAA approximate solar equations
-  with a 90.833° zenith, three iterations, flat horizon and standard refraction.
-- Linearly interpolate cloud/visibility forecasts in time to **each location's
-  sunset**. This is an approximation between three-hour samples, not extra temporal
-  model information. Sample sunward cloud cover at 80, 160, 240 km along the
-  seasonally varying solar azimuth at the **observer's** sunset time.
-- Reject missing variables, inconsistent grids, wrong run/lead, invalid values,
-  malformed GRIB, times without brackets, and any required extrapolation. Ignore
-  time-averaged cloud GRIB messages; never mix them with instantaneous fields.
+- NOAA/NCEP **HRRR 3 km** instantaneous `LCDC`, `MCDC`, `HCDC` cloud cover (%) and surface `VIS` (m), from the public NOMADS HRRR 2-D filter. The complete native Lambert grid is retained; no coarse GFS input or REFS ensemble is substituted.
+- Score native grid points within 24–50°N, 125–66°W, masked to contiguous US land using Natural Earth 1:50m boundaries. The PNG is 2400 × 1500; physical inputs remain 3 km.
+- Only extended 00/06/12/18 UTC cycles are eligible, with a three-hour publication allowance and at most two preceding-cycle attempts. At 8 a.m. Eastern the 06 UTC cycle is normally selected. Never use an ordinary 18-hour cycle.
+- Compute the minimum/maximum sunset time over the CONUS bounding box, including sunsets on the following UTC day. Require all hourly steps bracketing those times to fall within forecast hours 0–48. Check the farthest required step first. Download only that short hourly window, not all 49 steps. A run that stops before sunset is rejected; there is no GFS fallback or extrapolation.
+- Use NOAA approximate solar timing with a 90.833° zenith, flat horizon and standard refraction. Interpolate hourly forecasts linearly in time and bilinearly in native projected coordinates at each location's sunset.
+- Sample sunward low/mid cloud at 80, 160, and 240 km along the seasonal solar azimuth at the observer's sunset time. Out-of-domain rays have no score; require at least 99% CONUS land coverage before publishing and report the actual fraction. The first HRRR run covered 100%.
+- Validate grid spacing, levels, units, initialization, forecast lead, missing values and cloud bounds for every field and hour. Never mix runs or averaged and instantaneous cloud records.
+- Evaluate in 40,000-point chunks with float32 input cubes to keep memory modest on an Ubuntu runner. Smooth only 0.65 native cells, with a mask-normalized kernel that cannot spread missing values into the land scores.
+- Location search uses nearest native scores on a 0.03° geographic lookup lattice. `lookup.json` describes `lookup.bin.gz`: two little-endian signed-int16 planes (score × 10, UTC sunset minutes), missing value -32768. The browser checks the compressed payload SHA-256 and decompresses locally. This lattice does not add physical detail to HRRR.
 
 ### Exact score
 
@@ -163,7 +152,7 @@ exhaustive geocoding database. A labeled city may be some distance from the peak
 ### Limits and a validation path
 
 Sunset color depends on cloud optical depth, phase/height, three-dimensional
-illumination, aerosol size/composition, humidity, and the viewing horizon. GFS
+illumination, aerosol size/composition, humidity, and the viewing horizon. HRRR
 layer fractions and surface visibility do not fully describe those. This version
 does not use satellite observations, aerosol/smoke forecasts, terrain, or an
 ensemble. Tiny cloud-placement errors can reverse the outcome. The smoothing
@@ -178,19 +167,12 @@ and thresholds. Current tests check numerical and operational correctness,
 
 ## Reliability, storage, and website behavior
 
-The initial live run downloaded 3 GRIB subsets totaling about **1.1 MB**, plus
-about **1.1 MB** of cacheable Natural Earth archives. Geography is retained in
-the Actions cache; raw GRIBs are not persisted between hosted runner jobs.
-The command bounds each response to 12 MB, each NOAA request has a 15s connect /
-90s read timeout and at most two retries, and at most 3 cycles × 9 subsets can
-be attempted. Requests are sequential with a one-second pause between downloads.
-Typical successful generation is much smaller than those limits. No large
-satellite basemap is required.
+The first HRRR run used six hourly GRIB subsets (about 3.5 MB each) and completed locally in about 15 seconds including download, calculation and rendering. Each subset is bounded to 20 MB, with 15-second connect/90-second read timeouts and at most two retries. At most three cycles, each with 13 hourly subsets, can be attempted. NOAA requests are sequential with a one-second pause after each download. Natural Earth geography is retained in the Actions cache; raw GRIBs are not persisted between hosted jobs. No credentials or desktop session are required.
 
-Both outputs are staged and validated before replacement. The JSON is written
+The PNG, binary lookup, lookup metadata and manifest are staged and validated before replacement. The JSON is written
 last and carries the PNG's SHA-256. On download, calculation, or render failure,
 the command returns nonzero and does not substitute synthetic weather. A process
-crash between the two final local renames could leave a mixed pair; normal hosted
+crash between the final local renames could leave a mixed pair; normal hosted
 publication avoids that window by deploying only after a successful complete
 job. A failed deployment leaves the previous successful Pages site intact.
 
@@ -201,7 +183,7 @@ to check the printed date instead of calling the image current. Use an HTTP
 server for JSON loading: `python -m http.server 8000`, then open
 `http://localhost:8000/sunset/`. Direct `file://` opening can block `fetch`.
 
-The static export allowlists website assets and both generated files. It excludes
+The static export allowlists website assets and all generated sunset files. It excludes
 source code, caches, virtual environments, tests, and personal source documents.
 
 ```bash
@@ -220,11 +202,9 @@ or unrelated files. The ZIP export can overwrite the existing site ZIP.
   describes mid/high clouds reflecting sunrise/sunset colors.
 - [NOAA GML solar equations](https://gml.noaa.gov/grad/solcalc/solareqns.PDF)
   supplies the approximate solar timing/azimuth calculation.
-- [NCEP GFS implementations](https://www.emc.ncep.noaa.gov/emc/pages/numerical_forecast_systems/gfs/implementations.php)
-  documents instantaneous LCDC/MCDC/HCDC and other output fields.
-- [NOMADS GFS filter](https://nomads.ncep.noaa.gov/gribfilter.php?ds=gfs_0p25)
-  and [GFS product inventory](https://www.nco.ncep.noaa.gov/pmb/products/gfs/nomads/)
-  identify the actual model data source and cycles.
+- [NCEP HRRR products and extended cycles](https://www.nco.ncep.noaa.gov/pmb/products/hrrr/).
+- [HRRR surface-file inventory](https://www.nco.ncep.noaa.gov/pmb/products/hrrr/hrrr.t00z.wrfsfcf02.grib2.shtml) identifies instantaneous layer cloud cover and surface visibility.
+- [NOMADS HRRR filter](https://nomads.ncep.noaa.gov/cgi-bin/filter_hrrr_2d.pl) supplies the actual subsets.
 - [Natural Earth](https://www.naturalearthdata.com/) supplies geographic boundaries.
 - [GitHub schedule syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule)
   documents timezone-aware schedules; [schedule limitations](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
