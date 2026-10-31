@@ -121,8 +121,7 @@ def get_ndfd(http, cache, element, now):
                 # two PoPs a 24-hour probability. Same period as the high temp.
                 if end.hour != 0: continue
                 issue = datetime.strptime(str(ec.codes_get(gid,'dataDate'))+f"{ec.codes_get(gid,'dataTime'):04d}",'%Y%m%d%H%M').replace(tzinfo=UTC)
-                if issue > now+timedelta(minutes=10) or now-issue>timedelta(hours=24):
-                    raise ValueError('NDFD issuance is stale or future')
+                validate_ndfd_reference(issue,now)
                 if (end-start).total_seconds()!=43200:
                     raise ValueError('Expected a 12-hour NDFD interval')
                 if element=='pop12':
@@ -144,11 +143,22 @@ def get_ndfd(http, cache, element, now):
                 points=np.column_stack([lon[good],lat[good]])
                 return cKDTree(points),values[good],dict(source='NOAA/NWS National Digital Forecast Database',
                     source_urls=[url],issued_at_utc=iso(issue),valid_start_utc=iso(start),valid_end_utc=iso(end),
+                    reference_time_utc=iso(issue),timestamp_kind='NDFD production reference',
                     kind='Official NWS forecast grids; CH Weather presentation',
                     native_grid_km=2.5,render_sampling='Every second native grid point; nearest-neighbor sampling',
                     units='percent' if element=='pop12' else 'degrees Fahrenheit')
             finally: ec.codes_release(gid)
     raise ValueError(f'No unexpired daytime {element} forecast interval')
+
+
+def validate_ndfd_reference(reference,now):
+    """NDFD headers identify a nominal production cycle, not file publication.
+
+    A downloaded 18:17 UTC file can already carry the 18:30 UTC cycle.
+    Permit one 30-minute production slot; retain the 24-hour age limit.
+    """
+    if reference>now+timedelta(minutes=30) or now-reference>timedelta(hours=24):
+        raise ValueError(f'NDFD production reference outside allowed window: reference={iso(reference)}, checked={iso(now)} (maximum age 24h, lead 30m)')
 
 
 def sample_ndfd(tree, values, latitudes, longitudes):

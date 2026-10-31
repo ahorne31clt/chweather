@@ -127,7 +127,7 @@ def render(path,root,product,geo,lat=None,lon=None,values=None,records=None,rast
             side.text(0,.075,f'{start}\nto {end}',fontsize=8,color=SAGE,linespacing=1.6,va='top')
         fig.add_artist(plt.Line2D([.014,.986],[.119,.119],color=GOLD,lw=.8,transform=fig.transFigure))
         fig.text(.02,.09,'CH WEATHER',fontsize=12,weight='bold')
-        foot='Explore Fall model estimate · Source date '+product['source_date'] if kind=='foliage' else f"Issued {product['issued_at_utc']} · Valid {product['valid_start_utc']} to {product['valid_end_utc']}"
+        foot='Explore Fall model estimate · Source date '+product['source_date'] if kind=='foliage' else f"{product.get('timestamp_kind','Issued')} {product['issued_at_utc']} · Valid {product['valid_start_utc']} to {product['valid_end_utc']}"
         fig.text(.16,.09,foot,fontsize=8.5)
         fig.text(.02,.058,product['source']+' · Natural Earth boundaries · '+product['kind'],fontsize=8,color=SAGE)
         fig.text(.02,.031,'Generated '+product['generated_at_utc']+' | Student meteorologist Christopher Horne | @chornewx',fontsize=8,color=SAGE)
