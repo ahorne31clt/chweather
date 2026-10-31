@@ -46,6 +46,7 @@ def run(args):
     specs=[('gfs',cycle_plans('gfs',now,args.gfs_end,args.gfs_step)),
            ('hrrr',cycle_plans('hrrr',now,args.hrrr_end,args.hrrr_step)),
            ('nam',cycle_plans('nam',now,getattr(args,'nam_end',84),3))]
+    if getattr(args,'model',None):specs=[spec for spec in specs if spec[0]==args.model]
     results=[]
     with session() as http,tempfile.TemporaryDirectory(dir=output) as staging:
         staging=Path(staging)
@@ -125,13 +126,14 @@ def run(args):
         # Only remove this generator's obsolete frames, within the fixed output directory.
         for path in output.iterdir():
             if path.suffix not in ('.png','.bin','.webp') and not path.name.endswith('.bin.gz'):continue
-            if path.name not in keep and path.name.startswith(('gfs-','hrrr-','nam-')):path.unlink()
+            if path.name not in keep and path.name.startswith(tuple(name+'-' for name,_ in specs)):path.unlink()
     LOG.info('Published %d model cycles, %d frames',len(available),sum(len(r['frames']) for r in available))
     return manifest
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--model',choices=['gfs','hrrr','nam'],help='Generate one independent model job; default generates all three')
     parser.add_argument('--gfs-end',type=int,choices=range(0,385),default=384)
     parser.add_argument('--gfs-step',type=int,choices=[3,6,12],default=3)
     parser.add_argument('--hrrr-end',type=int,choices=range(0,49),default=48)
@@ -143,7 +145,7 @@ def main():
     try:
         run(args)
         from .airports import generate
-        generate()
+        if args.model!='nam':generate()
     except Exception:
         LOG.exception('Model generation failed; no synthetic frames substituted')
         return 1
