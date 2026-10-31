@@ -2,7 +2,7 @@
 
 Static HTML, CSS, and JavaScript. No build system, account, or paid service required.
 
-**Automatic-update repair:** upload the matching `.github/workflows/sunset.yml` together with all source files. The old sunset-only workflow cannot build the current site. The replacement generates every product, including models and airport meteograms, at 8 a.m. Eastern and every six hours. Follow [the exact repair steps](docs/FIX-AUTOMATIC-UPDATES.md), including changing Pages source to GitHub Actions and starting a fresh workflow run.
+**Independent automatic updates:** upload all three workflows: `sunset.yml` for outlooks, `models.yml` for separate parallel GFS/HRRR/NAM jobs four times daily, and `publish.yml` to combine the newest successful bundles. Slow model rendering no longer blocks sunset or outlook updates. Follow [the exact upload and activation steps](docs/FIX-AUTOMATIC-UPDATES.md).
 
 ## Weather outlooks and location search
 
