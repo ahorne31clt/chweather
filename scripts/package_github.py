@@ -11,7 +11,7 @@ def package():
     files.update(ROOT/path for path in ['.gitignore','.github/workflows/sunset.yml',
                   'requirements-sunset.txt','requirements-sunset-dev.txt'])
     files.update((ROOT/'.github/workflows').glob('*.yml'))
-    for directory in ['sunset','weather','models','tropical','centers','analysis','ensembles','enso','scripts','tests']:
+    for directory in ['sunset','weather','models','tropical','centers','analysis','ensembles','enso','specialty','scripts','tests']:
         files.update((ROOT/directory).glob('*.py'))
     files.add(ROOT/'sunset/cities.json')
     files.update(p for p in (ROOT/'radar').glob('*') if p.is_file() and p.suffix in {'.mjs','.json','.txt'})
@@ -38,6 +38,15 @@ def package():
     with ZipFile(out.parent/'ch-weather-model-split-update.zip','w',ZIP_DEFLATED) as archive:
         for name in changed:archive.write(ROOT/name,name)
     shutil.copy2(out.parent/'ch-weather-model-split-update.zip',out.parent/'ch-weather-reliable-updates.zip')
+    collection=['index.html','sunset/index.html','outlooks/index.html','outlooks/centers.html','outlooks/collection.html',
+        'tropical/index.html','alerts/index.html','mos/index.html','enso/index.html',
+        'assets/collection.css','assets/collection.js','assets/navigation.css','assets/navigation.js',
+        '.github/workflows/sunset.yml','requirements-sunset.txt','scripts/package_site.py','scripts/collect_publication.py',
+        'scripts/package_github.py','scripts/run_product.py','tests/test_specialty.py','tests/test_packaging.py',
+        'tests/test_independent_publication.py','README.md','docs/OUTLOOK-COLLECTION.md']
+    collection.extend(p.relative_to(ROOT).as_posix() for p in (ROOT/'specialty').glob('*.py'))
+    with ZipFile(out.parent/'ch-weather-outlook-collection-update.zip','w',ZIP_DEFLATED) as archive:
+        for name in sorted(set(collection)):archive.write(ROOT/name,name)
 
 
 if __name__=='__main__':package()

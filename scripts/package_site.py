@@ -6,7 +6,8 @@ import shutil
 from zipfile import ZipFile, ZIP_DEFLATED
 
 ROOT=Path(__file__).resolve().parent.parent
-PRODUCTS=('sunset','weather','tropical','centers','enso','analysis','ensembles','models')
+SPECIALTIES=('daily','outdoor','stargazing','frost','snow','ice','comfort','confidence')
+PRODUCTS=('sunset','weather','tropical','centers','enso','analysis','ensembles','models')+tuple('specialty-'+p for p in SPECIALTIES)
 PAGES=('portfolio','sunset','outlooks','models','tropical','satellite','alerts','analysis','mos','ensembles','enso','radar')
 
 

@@ -10,11 +10,11 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode,urlparse
 from urllib.request import Request,urlopen,build_opener,HTTPRedirectHandler
 from zipfile import ZipFile
-from scripts.package_site import product_files
+from scripts.package_site import product_files,PRODUCTS
 from scripts.merge_models import check_part,merge
 
 ROOT=Path(__file__).resolve().parent.parent
-FAMILIES={'outlooks':('sunset.yml','outlooks-bundle',{'sunset','weather','tropical','centers','enso','analysis','ensembles'}),
+FAMILIES={'outlooks':('sunset.yml','outlooks-bundle',set(PRODUCTS)-{'models'}),
           'models':('models.yml','models-bundle',{'models'})}
 
 
