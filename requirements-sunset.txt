@@ -6,3 +6,4 @@ eccodes==2.42.0
 requests==2.32.4
 Pillow==11.2.1
 tzdata==2025.2
+astronomy-engine==2.1.19
