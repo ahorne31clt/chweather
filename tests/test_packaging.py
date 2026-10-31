@@ -54,9 +54,18 @@ def test_sunset_lookup_binary_is_validated_and_cname_is_preserved(tmp_path,monke
 def test_workflow_generates_every_packaged_product_before_publishing():
     workflow=(Path(__file__).resolve().parents[1]/'.github/workflows/sunset.yml').read_text()
     products=re.search(r'product: \[([^\]]+)\]',workflow).group(1)
-    assert {p.strip() for p in products.split(',')}==set(export.PRODUCTS)
+    assert {p.strip() for p in products.split(',')}==set(export.PRODUCTS)-{'models'}
     assert 'needs: [verify, generate]' in workflow
     assert 'fail-fast: false' in workflow
     assert '--check --product "$PRODUCT"' in workflow
     assert 'merge-multiple: true' in workflow
     assert 'timezone: America/New_York' in workflow
+    assert 'timeout-minutes: 40' in workflow
+    assert '--only-binary=:all:' in workflow
+    assert 'sudo timeout 120 apt-get' in workflow
+    models=(Path(__file__).resolve().parents[1]/'.github/workflows/models.yml').read_text()
+    assert 'model: [gfs, hrrr, nam]' in models
+    assert 'python -m models --model "$MODEL"' in models
+    publish=(Path(__file__).resolve().parents[1]/'.github/workflows/publish.yml').read_text()
+    assert 'workflows: [Daily weather and sunset outlooks, Scheduled weather models]' in publish
+    assert 'scripts.collect_publication' in publish
