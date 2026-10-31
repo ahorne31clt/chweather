@@ -1,14 +1,17 @@
-"""Combine the newest successful independent outlook and model artifacts for Pages."""
+"""Publish validated product artifacts independently, retaining older successful data."""
 from datetime import datetime,timezone
 import hashlib
 import json
 import os
+import shutil
 from pathlib import Path,PurePosixPath
 import tempfile
 from urllib.error import HTTPError
 from urllib.parse import urlencode,urlparse
 from urllib.request import Request,urlopen,build_opener,HTTPRedirectHandler
 from zipfile import ZipFile
+from scripts.package_site import product_files
+from scripts.merge_models import check_part,merge
 
 ROOT=Path(__file__).resolve().parent.parent
 FAMILIES={'outlooks':('sunset.yml','outlooks-bundle',{'sunset','weather','tropical','centers','enso','analysis','ensembles'}),
@@ -28,18 +31,10 @@ def api(path,token):
         return json.load(response)
 
 
-def latest_artifact(repository,workflow,name,token):
-    query=urlencode({'status':'success','branch':'main','per_page':10})
-    try:runs=api(f'repos/{repository}/actions/workflows/{workflow}/runs?{query}',token)['workflow_runs']
-    except HTTPError as exc:
-        if exc.code==404:return None
-        raise
-    for run in runs:
-        if run.get('head_branch')!='main' or run.get('event')=='pull_request':continue
-        artifacts=api(f'repos/{repository}/actions/runs/{run["id"]}/artifacts?per_page=100',token)['artifacts']
-        for artifact in artifacts:
-            if artifact['name']==name and not artifact['expired']:return artifact
-    return None
+def artifact_candidates(repository,name,token):
+    query=urlencode({'name':name,'per_page':30})
+    artifacts=api(f'repos/{repository}/actions/artifacts?{query}',token)['artifacts']
+    return sorted((a for a in artifacts if a['name']==name and not a['expired'] and (a.get('workflow_run') or {}).get('head_branch')=='main'),key=lambda a:a['created_at'],reverse=True)
 
 
 def extract(archive,destination,products):
@@ -91,19 +86,86 @@ def unavailable_models(root):
         'catalog_filename':'catalog.json','catalog_count':0,'status':'unavailable'})+'\n',encoding='utf-8')
 
 
+def unavailable_product(root,product):
+    folder=Path(root)/'generated'/product;folder.mkdir(parents=True,exist_ok=True)
+    now=datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00','Z')
+    metadata=dict(schema_version=1,generated_at_utc=now,status='unavailable',products=[],models=[],basins=[],
+        message='No validated successful data is available for this product yet. Other products update independently.')
+    (folder/'latest.json').write_text(json.dumps(metadata)+'\n',encoding='utf-8')
+
+
+def restore_product(repository,product,token,temporary):
+    candidates=artifact_candidates(repository,'forecast-'+product,token)
+    weather=None;selected={};expected=set()
+    for index,artifact in enumerate(candidates[:6]):
+        destination=temporary/f'{product}-{index}';archive=temporary/f'{product}-{index}.zip'
+        try:
+            download_artifact(repository,artifact,token,archive);extract(archive,destination,{product})
+            paths=list(product_files(product,destination))
+            metadata=json.loads((destination/'generated'/product/'latest.json').read_text(encoding='utf-8'))
+            if metadata.get('status')=='unavailable':continue
+            if product!='weather':
+                for path in paths:
+                    target=ROOT/path.relative_to(destination);target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target)
+                print(f'Restored {product}: validated artifact {artifact["id"]}');return True
+            if weather is None:
+                weather=metadata
+                expected={'spc-day1','spc-day2','spc-day3','weather-national','weather-nc','rain-national','rain-nc'}
+                if metadata.get('foliage_status')!='out_of_season':expected.update({'foliage-national','foliage-nc'})
+            for item in metadata.get('products',[]):
+                if item['id'] not in expected or item['id'] in selected:continue
+                value=dict(item)
+                if index:value['retained_from_previous_publication']=True
+                selected[item['id']]=value
+                source=destination/'generated/weather'/item['image_filename'];target=ROOT/'generated/weather'/item['image_filename']
+                target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,target)
+            if expected<=selected.keys():break
+        except Exception as error:print(f'{product} artifact {artifact["id"]} could not be used: {error}')
+        finally:archive.unlink(missing_ok=True)
+    if product=='weather' and selected:
+        folder=ROOT/'generated/weather';folder.mkdir(parents=True,exist_ok=True)
+        weather=dict(weather,products=list(selected.values()),retained_products=[k for k,v in selected.items() if v.get('retained_from_previous_publication')])
+        (folder/'latest.json').write_text(json.dumps(weather,indent=2,allow_nan=False)+'\n',encoding='utf-8')
+        print(f'Restored weather: {len(selected)} products, {len(weather["retained_products"])} retained from earlier updates');return True
+    return False
+
+
+def restore_model(repository,model,token,temporary):
+    for index,artifact in enumerate(artifact_candidates(repository,'model-'+model,token)[:3]):
+        destination=temporary/f'{model}-{index}';archive=temporary/f'{model}-{index}.zip'
+        try:
+            download_artifact(repository,artifact,token,archive);extract(archive,destination,{'models'})
+            source=destination/'generated/models';_,paths=check_part(source,model)
+            for path in paths:
+                target=temporary/'parts'/f'model-{model}'/'generated/models'/path.relative_to(source)
+                target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target)
+            print(f'Restored {model}: validated artifact {artifact["id"]}');return True
+        except Exception as error:print(f'{model} artifact {artifact["id"]} could not be used: {error}')
+        finally:archive.unlink(missing_ok=True)
+    return False
+
+
 def main():
     token=os.environ.get('GH_TOKEN');repository=os.environ.get('GITHUB_REPOSITORY')
-    if not token or not repository:raise RuntimeError('GH_TOKEN and GITHUB_REPOSITORY are required; the publication workflow supplies both automatically.')
-    found={family:latest_artifact(repository,workflow,name,token) for family,(workflow,name,_) in FAMILIES.items()}
-    if not found['outlooks']:raise RuntimeError('Waiting for the first successful outlooks-bundle. Run Daily weather and sunset outlooks once; its completion automatically retries publication.')
-    with tempfile.TemporaryDirectory() as temporary:
-        temporary=Path(temporary)
-        for family,artifact in found.items():
-            if artifact is None:continue
-            target=temporary/(family+'.zip');download_artifact(repository,artifact,token,target)
-            extract(target,ROOT,FAMILIES[family][2]);print(f'Collected {family}: artifact {artifact["id"]}, created {artifact["created_at"]}')
-    if found['models'] is None:
-        unavailable_models(ROOT);print('No model bundle yet: explicit unavailable status; outlooks can still publish.')
+    if not token or not repository:raise RuntimeError('GH_TOKEN and GITHUB_REPOSITORY are required; Actions supplies both automatically.')
+    successes=0
+    with tempfile.TemporaryDirectory() as directory:
+        temporary=Path(directory)
+        for product in sorted(FAMILIES['outlooks'][2]):
+            try:available=restore_product(repository,product,token,temporary)
+            except Exception as error:print(f'{product} update unavailable: {error}');available=False
+            if available:successes+=1
+            else:unavailable_product(ROOT,product)
+        models=[]
+        for model in ('gfs','hrrr','nam'):
+            try:
+                if restore_model(repository,model,token,temporary):models.append(model)
+            except Exception as error:print(f'{model} update unavailable: {error}')
+        if models:
+            merge(temporary/'parts',ROOT/'generated/models',allow_missing=True);successes+=len(models)
+        else:unavailable_models(ROOT)
+    if not successes:raise RuntimeError('No validated product artifacts were available. Existing published website is retained.')
+    print(f'Publication assembled from {successes} independent successful product/model artifacts.')
     return 0
 
 

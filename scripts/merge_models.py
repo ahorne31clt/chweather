@@ -40,12 +40,23 @@ def check_part(folder,model):
     return manifest,list(dict.fromkeys(paths))
 
 
-def merge(parts,output):
+def merge(parts,output,allow_missing=False):
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
-    manifests=[];airports=[];catalog_hash=None;copied=set()
+    manifests=[];airports=[];catalog_hash=None;copied=set();missing=[];airport_notes=[]
     for model in ('gfs','hrrr','nam'):
         folder=Path(parts)/f'model-{model}'/'generated/models'
+        if not (folder/'latest.json').is_file() and allow_missing:
+            missing.append(dict(id=model,name=model.upper(),status='unavailable',message='No validated completed run is available yet.'))
+            continue
         manifest,paths=check_part(folder,model);manifests.append(manifest)
+        a=None
+        if model!='nam':
+            a=json.loads((folder/'airports/latest.json').read_text(encoding='utf-8'))
+            if catalog_hash is not None and catalog_hash!=a['catalog_sha256']:
+                airport_notes.append(f'{model.upper()} airport guidance omitted because its airport catalog differs; map guidance remains available.')
+                paths=[p for p in paths if 'airports' not in p.relative_to(folder).parts];a=None
+            elif a:
+                catalog_hash=a['catalog_sha256'];airports.append(a)
         for path in paths:
             relative=path.relative_to(folder)
             if relative.as_posix() in ('latest.json','airports/latest.json'):continue
@@ -53,13 +64,15 @@ def merge(parts,output):
             if relative in copied and target.read_bytes()!=path.read_bytes():raise ValueError(f'Model jobs produced conflicting shared asset: {relative}')
             shutil.copy2(path,target)
             copied.add(relative)
-        if model!='nam':
-            a=json.loads((folder/'airports/latest.json').read_text(encoding='utf-8'))
-            if catalog_hash is not None and catalog_hash!=a['catalog_sha256']:raise ValueError('Airport catalogs differ between model jobs; rerun to keep airport indices consistent')
-            catalog_hash=a['catalog_sha256'];airports.append(a)
+    if not manifests:raise ValueError('No completed model part is available')
     now=datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00','Z')
-    combined=dict(manifests[0],models=[m['models'][0] for m in manifests],generated_at_utc=now)
-    airport=dict(airports[0],models=[a['models'][0] for a in airports],generated_at_utc=now)
+    combined=dict(manifests[0],models=[dict(m['models'][0],generated_at_utc=m.get('generated_at_utc',now)) for m in manifests]+missing,generated_at_utc=now)
+    if airports:
+        airport=dict(airports[0],models=[a['models'][0] for a in airports],generated_at_utc=now,notes=airports[0].get('notes',[])+airport_notes)
+    else:
+        (output/'airports').mkdir(parents=True,exist_ok=True)
+        (output/'airports/catalog.json').write_text('[]\n',encoding='utf-8')
+        airport=dict(schema_version=1,models=[],generated_at_utc=now,catalog_filename='catalog.json',catalog_count=0,status='unavailable')
     (output/'airports/latest.json').write_text(json.dumps(airport,indent=2,allow_nan=False)+'\n',encoding='utf-8')
     (output/'latest.json').write_text(json.dumps(combined,indent=2,allow_nan=False)+'\n',encoding='utf-8')
     return combined
@@ -79,6 +92,7 @@ if __name__=='__main__':
     parser.add_argument('--check-part')
     parser.add_argument('--model',choices=['gfs','hrrr','nam'])
     parser.add_argument('--stage',help='Copy only validated referenced assets to this artifact root')
+    parser.add_argument('--allow-missing',action='store_true')
     args=parser.parse_args()
     if args.check_part:
         if not args.model:parser.error('--check-part requires --model')
@@ -86,5 +100,5 @@ if __name__=='__main__':
         if args.stage:stage(paths,args.check_part,args.stage)
         print(f'Validated {len(paths)} {args.model} model assets')
     else:
-        merge(args.parts,args.output)
+        merge(args.parts,args.output,args.allow_missing)
         if args.stage:stage(list(tree_files(Path(args.output)/'latest.json'))+list(tree_files(Path(args.output)/'airports/latest.json')),args.output,args.stage)

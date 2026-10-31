@@ -37,16 +37,22 @@ def references(value):
             yield from references(item)
 
 
-def product_files(product):
+def product_files(product,root=None):
     if product not in PRODUCTS:
         raise ValueError(f'Unknown product: {product}')
-    folder=ROOT/'generated'/product
+    root=Path(root) if root is not None else ROOT
+    folder=root/'generated'/product
+    if (folder/'latest.json').is_file():
+        state=json.loads((folder/'latest.json').read_text(encoding='utf-8'))
+        if state.get('status')=='unavailable':
+            yield folder/'latest.json'
+            return
     required=[folder/'latest.json']
     if product=='sunset':
         required.extend(folder/name for name in ('latest.png','lookup.json','lookup.bin.gz'))
     if product=='models':
         required.extend(folder/'airports'/name for name in ('latest.json','catalog.json'))
-    missing=[p.relative_to(ROOT).as_posix() for p in required if not p.is_file()]
+    missing=[p.relative_to(root).as_posix() for p in required if not p.is_file()]
     if missing:
         raise FileNotFoundError(f'{product}: missing {", ".join(missing)}. Run python -m {product} before packaging. Replace .github/workflows/sunset.yml with the matching current workflow.')
     seen=set()
@@ -57,13 +63,13 @@ def product_files(product):
             continue
         seen.add(path)
         if not path.is_file() or path.stat().st_size==0:
-            raise FileNotFoundError(f'{product}: missing or empty referenced asset {path.relative_to(ROOT)}. Regenerate with python -m {product}.')
+            raise FileNotFoundError(f'{product}: missing or empty referenced asset {path.relative_to(root)}. Regenerate with python -m {product}.')
         yield path
         if path.suffix=='.json':
             try:
                 manifest=json.loads(path.read_text(encoding='utf-8'))
             except (ValueError,UnicodeError) as exc:
-                raise ValueError(f'{product}: invalid JSON in {path.relative_to(ROOT)}') from exc
+                raise ValueError(f'{product}: invalid JSON in {path.relative_to(root)}') from exc
             pending.extend(path.parent/name for name in references(manifest))
 
 

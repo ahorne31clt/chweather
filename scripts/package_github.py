@@ -33,8 +33,11 @@ def package():
              'models/__main__.py','scripts/merge_models.py','scripts/collect_publication.py','scripts/package_github.py',
              'tests/test_independent_publication.py','tests/test_packaging.py','tests/test_model_selection.py',
              'README.md','docs/REFRESHES.md','docs/MODELS.md','docs/FIX-AUTOMATIC-UPDATES.md']
+    changed=sorted(set(changed+['weather/sources.py','weather/__main__.py','weather/render.py',
+        'scripts/package_site.py','assets/models.js','assets/outlooks.js','tests/test_weather.py','docs/PARTIAL-UPDATES.md']))
     with ZipFile(out.parent/'ch-weather-model-split-update.zip','w',ZIP_DEFLATED) as archive:
         for name in changed:archive.write(ROOT/name,name)
+    shutil.copy2(out.parent/'ch-weather-model-split-update.zip',out.parent/'ch-weather-reliable-updates.zip')
 
 
 if __name__=='__main__':package()
