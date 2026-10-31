@@ -1,6 +1,8 @@
 # What refreshes automatically
 
-The replacement workflow is `.github/workflows/sunset.yml`, named **Daily weather and sunset outlooks**. It starts at 8 a.m. America/New_York and additionally at 05:30, 11:30, 17:30, and 23:30 UTC for six-hour refreshes. Daylight saving time is handled for the 8 a.m. start. It also supports **Run workflow** and relevant pushes to `main`. Upload the matching workflow along with the source; the older sunset-only workflow cannot generate all the files now required by the site. See [repair instructions](FIX-AUTOMATIC-UPDATES.md).
+Successful products now publish independently when other jobs fail. Publication retrieves each latest validated per-product artifact, not an all-or-nothing combined bundle. Retained data keeps its original timestamps. See [the current failure-handling repair](PARTIAL-UPDATES.md).
+
+Outlooks use `.github/workflows/sunset.yml` (**Daily weather and sunset outlooks**), starting at 8 a.m. America/New_York and additionally at 05:30, 11:30, 17:30, and 23:30 UTC. Models use the independent `.github/workflows/models.yml` (**Scheduled weather models**), starting at those four UTC times. `.github/workflows/publish.yml` deploys each newest validated product artifact after either workflow completes. Upload all three matching workflows and source files. See [repair instructions](FIX-AUTOMATIC-UPDATES.md).
 
 | Step | Command | Outputs refreshed |
 | --- | --- | --- |
@@ -14,7 +16,7 @@ The replacement workflow is `.github/workflows/sunset.yml`, named **Daily weathe
 | Models | `python -m models` | GFS, HRRR, NAM parameters, numeric probes, smoothing layers, and GFS/HRRR airport meteograms |
 | Publication | `python scripts/package_site.py --output-dir _site` | One Pages deployment containing the site and matching generated data |
 
-Generation runs in eight parallel jobs (maximum four at once), each validating its output before artifact transfer. Generation is not instantaneous: model downloads and rendering finish after the scheduled start. A failed required step prevents a new deployment. The website keeps the last successful publication and its original issue/valid/generation times. No weather values are synthesized to cover a failed source. Forecast assets are not committed by the job; they are assembled into the Pages artifact. An open model viewer checks the published manifest every five minutes and when its tab becomes visible, adopts new publications, preserves the nearest valid time, and invalidates airport-data caches. It pauses updates while a guide or airport dialog is open.
+Outlooks run in seven product jobs (up to four concurrently). GFS, HRRR and NAM run in three independent parallel model jobs on their own schedule. Slow models do not hold up outlook publication. The publisher reuses each model’s last successful artifact, with its original timestamps, while new models render; if there is no unexpired model artifact, it explicitly marks model guidance unavailable and still publishes outlooks. No values are synthesized. Artifacts are retained for three days. An open model viewer checks for new publications every five minutes and when its tab becomes visible, preserves the nearest valid time, and invalidates airport caches. Updates pause while dialogs are open.
 
 The local NWS point forecast makes fresh browser requests when viewed/refreshed. The tropical page also offers direct official image loading when the browser/source permits it. The radar viewer fetches public Level II volumes and MRMS grids directly in the browser, with a two-minute auto-refresh while visible. These requests are independent of the scheduled publication. See `docs/RADAR.md`.
 

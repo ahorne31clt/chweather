@@ -1,44 +1,63 @@
-# Repair the automatic forecast and model updates
+# Independent outlook and model updates
 
-The GitHub repository was running the older **Daily sunset outlook** workflow. It only ran `python -m sunset`, while the uploaded website packager required generated weather, model, and airport files. Missing `generated/models/latest.json` stopped the deployment, so even successfully generated sunset images never reached the website. The repository also had no scheduled model-generation step.
+Model rendering is now separate from the outlook workflow. Slow or failed model jobs no longer block new sunset, SPC, WPC/CPC, tropical, RTMA, ensemble, or ENSO products from publishing.
 
-## Upload this matching version
+**Latest update:** products now upload and publish independently even if another job fails. The publisher collects per-product artifacts; combined bundles are no longer required. See [NDFD timing and failure-handling repair](PARTIAL-UPDATES.md) for the current update ZIP and exact changes. The three workflow names and schedules below remain the same.
 
-1. Extract `output/ch-weather-github-ready.zip` on your computer. Upload its **contents** to the root of `ahorne31clt/chweather`, replacing files with matching names. Do not upload the ZIP itself or create an extra enclosing folder. If GitHub limits the upload to 100 files, use the two smaller upload-batch ZIPs and upload the extracted contents of each in turn. Preserve the folders.
-2. Replace **`.github/workflows/sunset.yml`** too. This is essential: ordinary uploads often omit the hidden `.github` folder. Open https://github.com/ahorne31clt/chweather/edit/main/.github/workflows/sunset.yml , select the entire old file, and paste the contents of the supplied `output/sunset.yml`. Commit to `main`. It must now be named **Daily weather and sunset outlooks** and contain `verify`, `generate`, and `publish` jobs. Keeping the old workflow leaves the same failure in place.
-3. Under **Settings → Pages → Build and deployment → Source**, choose **GitHub Actions**. Your repository was also using a separate branch-based `pages-build-deployment` job; switching the source makes the forecast workflow responsible for the live deployment. Keep your existing custom-domain setting and `CNAME`.
-4. Open https://github.com/ahorne31clt/chweather/actions/workflows/sunset.yml . Select **Run workflow → main → Run workflow**. This starts a fresh run with the new workflow. Do not select **Re-run jobs** on the old failed run, because that uses its older commit/workflow.
-5. The run should show verification, eight product-generation jobs, and publication. Open **Generate models** for GFS/HRRR/NAM and airport progress. Open **Generate sunset** for the HRRR sunset forecast. The green **Publish website and forecasts together** step means the generated files have reached Pages. Publication is not complete when generation alone turns green.
+## Upload the matching code and all three workflows
 
-## Automatic timing
+1. Extract `output/ch-weather-model-split-update.zip` and upload its contents to the repository root, replacing matching files while preserving folders. This contains only the files changed by this update. The complete `output/ch-weather-github-ready.zip` is also available; its smaller batch ZIPs contain fewer than 100 files each.
+2. Replace `.github/workflows/sunset.yml` and add `.github/workflows/models.yml` and `.github/workflows/publish.yml`. Windows can hide `.github`; visible copies are supplied as `output/sunset.yml`, `output/models.yml`, and `output/publish.yml`. Paste their complete contents into the exact GitHub paths above. They belong inside `.github/workflows`, not at repository root.
+3. Keep **Settings → Pages → Source → GitHub Actions**. Preserve the existing custom domain and `CNAME`.
+4. Once all files are committed to `main`, start fresh runs of **Daily weather and sunset outlooks** and **Scheduled weather models** in Actions. Each successful completion automatically starts **Publish latest weather website**. Do not rerun an older failed run: it still uses the older code and workflow.
 
-The workflow starts at **8 a.m. America/New_York** each day, handling daylight saving time. Additional refreshes start every six hours at **05:30, 11:30, 17:30, and 23:30 UTC**. These run all eight generators so the website and model manifests stay consistent. Schedules are start times, not promises that downloads and rendering are already finished. GitHub can delay scheduled starts. Models use the latest complete supported cycle, not a partially uploaded run. HRRR extended cycles are preferred; any shorter fallback remains labeled by its actual forecast hours.
+Direct workflow editor locations:
 
-Generators run in parallel on Ubuntu (up to four at once), with up to 105 minutes for an individual generation step. Full model loops are much heavier than a single sunset map. A failed generator stays a failed job; publication requires all products to validate, so incomplete or fabricated data are never substituted. The site retains its previous successful deployment and its original timestamps on a failure.
+- https://github.com/ahorne31clt/chweather/edit/main/.github/workflows/sunset.yml
+- For new files use Add file → Create new file, entering `.github/workflows/models.yml` or `.github/workflows/publish.yml` as the filename.
 
-Radar, satellite, warnings, local NWS forecasts, and MOS fetch data in the viewer; they do not wait for these scheduled rendered-map jobs. A static website cannot execute a Python model generator in a visitor's browser.
+## The three workflows
 
-## Changes in this repair
+| Workflow | Schedule | Work |
+| --- | --- | --- |
+| Daily weather and sunset outlooks (`sunset.yml`) | 8 a.m. America/New_York, plus 05:30 / 11:30 / 17:30 / 23:30 UTC | Seven independent product jobs. **No deterministic model generation.** Uploads each successful `forecast-PRODUCT` artifact. |
+| Scheduled weather models (`models.yml`) | 05:30 / 11:30 / 17:30 / 23:30 UTC: four times daily | GFS, HRRR, and NAM run in **three separate parallel jobs**, uploading `model-gfs`, `model-hrrr`, and `model-nam` independently. GFS and HRRR include matching airport meteograms. |
+| Publish latest weather website (`publish.yml`) | Automatically when either workflow completes, including failed jobs, plus manual/static-site updates | Collects each latest validated product/model artifact, falls back to previous successful artifacts for failed products, validates the site, and publishes Pages. It does not rerender models. |
 
-- `.github/workflows/sunset.yml`: all eight generators, six-hour model/outlook refreshes, 8 a.m. local start, parallel jobs, generous per-job limits, complete artifact transfer and Pages publication.
-- `scripts/package_site.py`: validates all required products, airport output, manifest-referenced images, smoothing overlays, and numeric lookup files; reports missing generators clearly; preserves `CNAME`; source-only enumeration works without generated data.
-- `scripts/package_github.py`: source ZIP creation no longer reads generated manifests. It can run from a clean checkout before forecasts exist.
-- `tests/test_packaging.py`: regression coverage for missing model/airport data, missing cursor lookup and smoothing assets, unsafe paths, clean source export, custom domains, and agreement between scheduled generators and required outputs.
-- `assets/models.js` and `assets/meteogram.js`: open model pages check for new publications every five minutes and on tab return, retain the nearest valid time, and refresh airport-data caches when a new publication arrives. Updates wait until open dialogs are closed.
-- `docs/REFRESHES.md`, `README.md`, and this document: corrected refresh and deployment instructions.
-- Rebuilt `output/ch-weather-github-ready.zip`, `output/ch-weather-website.zip`; added `output/sunset.yml` and two smaller source-upload batches.
+Scheduled starts can be delayed by GitHub. Published model cycles are the latest complete supported cycles available when generation runs. Full ranges remain GFS 384 hours, HRRR up to 48 hours, and NAM 84 hours; no shorter GFS range or reduced parameter list was introduced to make the job appear faster. HRRR's existing explicitly labeled 18-hour fallback remains available if extended cycles cannot be used.
 
-No credentials or manually configured environment variables are required. GitHub supplies its normal deployment token. The workflow sets `MPLBACKEND=Agg`, `PYTHONUNBUFFERED=1`, `OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, and `TZ=UTC` for unattended rendering and bounded numerical threading.
+Each model job has 180 minutes total, with up to 150 minutes for generation; verification is a separate 40-minute job. Native ecCodes installation and Python-wheel installation have separate bounded steps. A model failure preserves that model's previous successful artifact while the other models and outlooks publish independently. Artifacts are retained for three days with their real generation/run/valid times. A product with no usable history is explicitly unavailable; publication proceeds with any validated products. If no validated artifacts exist at all, the existing deployment stays in place.
 
-## Check locally
+The publisher is the only workflow that deploys Pages. It serializes deployments and collects each product's newest validated artifact at publication time. Overall workflow failure does not disqualify the other jobs' successful artifacts. Extraction allows only the expected `generated/` product directories and verifies a SHA-256 digest when supplied by GitHub.
 
-After installing `requirements-sunset-dev.txt`:
+An open model page checks for new publications every five minutes and on tab return, retaining the nearest valid time. This is independent of server-side generation. Radar, satellite, warnings, local NWS forecasts, and MOS retrieve their data in the viewer.
+
+## Local commands
 
 ```
-python -m pytest -q tests
-python scripts/package_site.py --check
+python -m models --model gfs
+python -m models --model hrrr
+python -m models --model nam
 ```
 
-To regenerate a particular product, run `python -m sunset`, `python -m weather`, `python -m tropical`, `python -m centers`, `python -m enso`, `python -m analysis`, `python -m ensembles`, or `python -m models`. Check it with `python scripts/package_site.py --check --product models` (substitute its product name). Once all outputs exist, `python scripts/package_site.py --output-dir _site` builds the public folder. `_site` must be a fresh directory; the packager intentionally refuses to delete existing folders.
+Each command generates one model at `generated/models/` for an isolated runner; GFS/HRRR include airport data, NAM does not. Use separate checkouts/output workspaces if running these commands concurrently on your own machine. The workflows use separate Ubuntu runners. Running `python -m models` without `--model` retains the original all-three-model behavior.
 
-The local repair and tests do not prove that a new run has succeeded on GitHub. That requires uploading the matching workflow and sources and starting the fresh run above.
+`python -m scripts.merge_models --check-part generated/models --model gfs` validates a single job. `python -m scripts.merge_models --parts .model-parts --output generated/models` merges all three parts; `--allow-missing` permits independent available models. It rejects incomplete ranges, missing files, and mismatched airport runs. Incompatible airport catalogs cause the conflicting airport data to be omitted while valid model maps remain. Staging includes only referenced files.
+
+## Environment and credentials
+
+No user-configured secrets or API keys are needed. Publication requires `GH_TOKEN` (the workflow supplies `${{ github.token }}` automatically) and `GITHUB_REPOSITORY` (supplied automatically by Actions). The publishing workflow grants `actions: read`, `contents: read`, `pages: write`, and `id-token: write`. Never put a personal token in the source. Library setup uses `MPLBACKEND=Agg`, `PYTHONUNBUFFERED=1`, `OMP_NUM_THREADS=1`, `OPENBLAS_NUM_THREADS=1`, and `TZ=UTC`; workflows set these automatically.
+
+## Files changed
+
+- `.github/workflows/sunset.yml`: outlook-only generation and artifact bundle; no model dependency or Pages deployment.
+- `.github/workflows/models.yml`: new four-times-daily parallel GFS/HRRR/NAM workflow and model bundle.
+- `.github/workflows/publish.yml`: new independent publisher triggered by either successful generation workflow.
+- `models/__main__.py`: `--model` selection, model-specific cleanup, NAM skips unsupported airport generation.
+- `scripts/merge_models.py`: validates, stages, and merges independent map/airport bundles.
+- `scripts/collect_publication.py`: retrieves the newest successful independent bundles using GitHub's built-in token.
+- `scripts/package_github.py`: includes all workflows and writes visible copies for upload.
+- `tests/test_independent_publication.py`, `tests/test_packaging.py`, `tests/test_model_selection.py`: regression coverage for model isolation, complete ranges, airport merging, artifact boundaries, missing-model publication, and independent workflow wiring.
+- `README.md`, `docs/REFRESHES.md`, `docs/MODELS.md`, and this guide: updated operating instructions.
+
+Generated source/update ZIPs and visible workflow copies are in `output/`. These repairs are local until uploaded; a successful hosted run is required to verify the GitHub deployment.

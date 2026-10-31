@@ -91,3 +91,7 @@ NAM source: [NCEP NAM product inventory](https://www.nco.ncep.noaa.gov/pmb/produ
 ## Viewer-only asset refresh
 
 `python -m models.viewer_assets` regenerates universal probes and annotation layers from the currently published runs and their model cache without selecting a newer cycle. `--probes-only` updates only the compact numeric data. Normal `python -m models` now produces both automatically.
+# Independent scheduled model runs
+
+`.github/workflows/models.yml` generates GFS, HRRR and NAM in three parallel jobs at 05:30, 11:30, 17:30 and 23:30 UTC. Each uses `python -m models --model gfs` (or `hrrr` / `nam`), preserving the full forecast range and all supported parameters. GFS/HRRR airport data is generated within its matching job. These runs do not block the separate outlook workflow. The dedicated publisher combines each latest validated model and outlook artifact. See [workflow setup](FIX-AUTOMATIC-UPDATES.md). The original `python -m models` command still generates all three models locally.
+
