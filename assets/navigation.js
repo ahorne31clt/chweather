@@ -1,0 +1,13 @@
+(()=>{
+ const nav=document.querySelector('#navigation');if(!nav||location.pathname.includes('/portfolio/'))return;
+ const root=new URL('../',document.currentScript.src),sheet=document.createElement('link');sheet.rel='stylesheet';sheet.href=new URL('assets/navigation.css',root);document.head.append(sheet);
+ const groups=[['Forecasts',[
+  ['Weather overview','outlooks/index.html'],['Daily weather & fronts','outlooks/collection.html?product=daily'],['Outdoor weather','outlooks/collection.html?product=outdoor'],['Stargazing','outlooks/collection.html?product=stargazing'],['Frost & freeze','outlooks/collection.html?product=frost'],['Snowfall','outlooks/collection.html?product=snow'],['Ice accumulation','outlooks/collection.html?product=ice'],['Comfortable weather','outlooks/collection.html?product=comfort'],['Forecast confidence','outlooks/collection.html?product=confidence'],['Sunset outlook','sunset/index.html'],['Local NWS forecast','outlooks/index.html#local-forecast']]],
+ ['Live Weather',[['Radar','radar/index.html'],['Satellite','satellite/index.html'],['Warnings & alerts','alerts/index.html'],['Surface analysis','analysis/index.html']]],
+ ['Models',[['Model maps','models/index.html'],['Ensembles & probabilities','ensembles/index.html'],['MOS bulletin guidance','mos/index.html']]],
+ ['Seasons & Climate',[['Tropical outlooks','tropical/index.html'],['WPC / CPC outlooks','outlooks/centers.html'],['El Niño / La Niña','enso/index.html'],['Fall color','outlooks/index.html#foliage']]]];
+ const link=(name,path)=>{const a=document.createElement('a');a.textContent=name;a.href=new URL(path,root);return a;};nav.replaceChildren();nav.append(link('Home','index.html'));
+ for(const [label,items]of groups){const details=document.createElement('details');details.className='nav-dropdown';const summary=document.createElement('summary');summary.textContent=label+' ▾';const menu=document.createElement('div');menu.className='nav-dropdown-links';for(const [name,path]of items)menu.append(link(name,path));details.append(summary,menu);nav.append(details);details.addEventListener('toggle',()=>{if(details.open)for(const other of nav.querySelectorAll('details'))if(other!==details)other.open=false;});}
+ nav.append(link('Portfolio ↗','portfolio/index.html'));nav.setAttribute('aria-label','Main navigation');
+ document.addEventListener('click',event=>{if(!nav.contains(event.target))for(const d of nav.querySelectorAll('details'))d.open=false;});document.addEventListener('keydown',event=>{if(event.key==='Escape')for(const d of nav.querySelectorAll('details[open]')){d.open=false;d.querySelector('summary').focus();}});
+})();

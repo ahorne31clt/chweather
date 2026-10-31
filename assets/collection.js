@@ -1,0 +1,27 @@
+(()=>{
+ const $=id=>document.getElementById(id),names={daily:'Daily weather & fronts',outdoor:'Outdoor weather',stargazing:'Stargazing',frost:'Frost & freeze',snow:'24-hour snowfall',ice:'24-hour ice accumulation',comfort:'Comfortable weather',confidence:'Temperature forecast confidence'};
+ const initial=new URLSearchParams(location.search);let kind=Object.hasOwn(names,initial.get('product'))?initial.get('product'):'daily',region=initial.get('region')==='nc'?'nc':'national',serial=0;
+ const format=t=>new Date(t).toLocaleString('en-US',{timeZone:'UTC',month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})+' UTC';
+ async function load(){
+  const id=++serial;$('collection-image-link').hidden=true;$('collection-download').hidden=true;$('collection-title').textContent=names[kind];$('collection-status').textContent='Loading the latest published '+names[kind].toLowerCase()+'…';$('collection-status').className='';
+  for(const b of document.querySelectorAll('[data-product]'))b.setAttribute('aria-pressed',String(b.dataset.product===kind));for(const b of document.querySelectorAll('[data-region]'))b.setAttribute('aria-pressed',String(b.dataset.region===region));
+  const query=new URLSearchParams({product:kind,region});history.replaceState(null,'',location.pathname+'?'+query);
+  const base=new URL('../generated/specialty-'+kind+'/latest.json',document.baseURI);$('collection-manifest').href=base.href;$('collection-wpc').hidden=kind!=='daily';$('collection-times').textContent='';$('collection-description').textContent='';$('collection-method').textContent='';$('collection-extra').textContent='';
+  try{
+   const response=await fetch(base,{cache:'no-store',signal:AbortSignal.timeout(20000)});if(!response.ok)throw new Error('This outlook has not been published yet. Its independent update job will supply it when available.');const meta=await response.json();if(id!==serial)return;
+   if(meta.status==='unavailable'||!Array.isArray(meta.products)||!meta.products.length)throw new Error('No validated forecast is available for this outlook yet. Other outlooks can still update independently.');
+   const image=meta.products.find(p=>p.region===region);if(!image||!/^[a-z]+-(national|nc)\.png$/.test(image.image_filename)||!Number.isFinite(Date.parse(meta.model_run)))throw new Error('The published outlook metadata is incomplete.');
+   $('collection-kind').textContent=meta.kind.toUpperCase();$('collection-description').textContent=meta.description;$('collection-method').textContent=meta.method;$('collection-sampling').textContent=meta.sampling+' / Native NBM grid approximately '+meta.native_grid_km.toFixed(2)+' km.';
+   $('collection-times').textContent='Forecast window: '+format(meta.valid_start_utc)+' → '+format(meta.valid_end_utc)+' · Model run: '+format(meta.model_run)+' · Generated: '+format(meta.generated_at_utc);
+   const stale=Date.now()-Date.parse(meta.generated_at_utc)>18*3600000||Date.parse(meta.valid_end_utc)<=Date.now();$('collection-status').textContent=stale?'Earlier guidance: a newer successful publication is not available here yet. Dates below remain unchanged.':'Published guidance / '+(meta.kind.startsWith('Experimental')?'Experimental index; read the method below.':'Sources and valid times are shown below.');$('collection-status').classList.toggle('stale',stale);
+   const url=new URL(image.image_filename,base);url.searchParams.set('v',image.image_sha256);$('collection-image').src=url.href;$('collection-image').alt=meta.title+' / '+(region==='nc'?'North Carolina':'CONUS')+' / '+meta.valid_start_utc+' to '+meta.valid_end_utc;$('collection-image-link').href=url.href;$('collection-download').href=url.href;$('collection-download').hidden=false;$('collection-image-link').hidden=false;
+   if(meta.fronts)$('collection-extra').textContent='Fronts and H/L positions: official WPC forecast valid '+format(meta.fronts.valid_at_utc)+'. Standard symbols: blue triangles cold; red semicircles warm; alternating stationary; purple occluded; dashed trough. Hatched areas have ≥50% precipitation probability in at least one 6-hour period, not a 24-hour probability.';
+   if(meta.moon)$('collection-extra').textContent='Moon illumination: '+meta.moon.illuminated_percent.toFixed(1)+'% at '+meta.moon.calculated_at_utc+'. This is shown separately and is not included in the viewing index. Moonrise, local light pollution, smoke, and atmospheric seeing are not forecast.';
+   if(meta.confidence_valid_at_utc)$('collection-extra').textContent='Temperature spread valid '+format(meta.confidence_valid_at_utc)+'. Green/narrower spread means greater agreement; wider spread means greater uncertainty. This does not describe confidence in snow, rain, ice, or storms.';
+  }catch(error){if(id!==serial)return;$('collection-status').textContent=error.message;$('collection-status').className='stale';}
+ }
+ for(const b of document.querySelectorAll('[data-product]'))b.onclick=()=>{kind=b.dataset.product;load();};for(const b of document.querySelectorAll('[data-region]'))b.onclick=()=>{region=b.dataset.region;load();};
+ $('collection-image').onerror=()=>{$('collection-image-link').hidden=true;$('collection-status').textContent='The graphic could not be loaded. Try another outlook or open its source metadata.';};
+ $('collection-share').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);$('collection-share').textContent='Link copied ✓';}catch{$('collection-status').textContent='Copy the browser address to share this outlook and region.';}};
+ load();
+})();
