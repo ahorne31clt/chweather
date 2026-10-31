@@ -79,44 +79,28 @@ jobs:
         timeout-minutes: 15
         run: |
           python -m pip install --only-binary=:all: --timeout 30 --retries 2 --disable-pip-version-check -r requirements-sunset.txt
+      - name: Clear checkout manifest before this generation attempt
+        run: python -c "from pathlib import Path; import os; Path('generated/models/latest.json').unlink(missing_ok=True)"
       - name: Generate from real source data
+        id: generate
         timeout-minutes: 150
         run: python -m models --model "$MODEL"
       - name: Validate this generator's manifest and every referenced asset
+        id: validate
+        if: always() && (steps.generate.outcome == 'success' || steps.generate.outcome == 'failure')
         run: python -m scripts.merge_models --check-part generated/models --model "$MODEL"
       - name: Stage only this job's output with its generated/product directory
+        id: stage
+        if: always() && steps.validate.outcome == 'success' 
         run: |
           python -m scripts.merge_models --check-part generated/models --model "$MODEL" --stage "$RUNNER_TEMP/forecast"
       - name: Transfer validated outputs to the publishing job
+        if: always() && steps.stage.outcome == 'success' 
         uses: actions/upload-artifact@v7
         with:
           name: model-${{ matrix.model }}
           path: ${{ runner.temp }}/forecast/
           if-no-files-found: error
           compression-level: 0
-          retention-days: 1
-
-  bundle:
-    needs: [verify, generate]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: model-*
-          path: .model-parts
-      - name: Merge all three complete model runs and matching airport guidance
-        run: |
-          python -m scripts.merge_models --parts .model-parts --output generated/models --stage "$RUNNER_TEMP/models"
-          python scripts/package_site.py --check --product models
-      - uses: actions/upload-artifact@v7
-        with:
-          name: models-bundle
-          path: ${{ runner.temp }}/models/
-          compression-level: 0
           retention-days: 3
-          if-no-files-found: error
+
