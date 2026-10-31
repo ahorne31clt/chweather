@@ -107,7 +107,7 @@ if(modelStage){
       const age=Date.now()-Date.parse(model.model_run);
       const stale=age>24*3600000?'OLDER RUN: ':'';
       const horizon=model.id==='hrrr'&&model.requested_end_hour>model.frames.at(-1).hour?' · 18h fallback; extended run unavailable':'';
-      note.textContent=runNotice+fieldNotice+timeNotice+stale+model.name+' · '+(frame.hour===0?'F000 model analysis':'forecast guidance')+' · '+model.native_resolution+' · '+model.frames.length+' published hours'+horizon+' · Generated '+formatTime(manifest.generated_at_utc)+' · Arrow keys step; space plays.';
+      note.textContent=runNotice+fieldNotice+timeNotice+stale+model.name+' · '+(frame.hour===0?'F000 model analysis':'forecast guidance')+' · '+model.native_resolution+' · '+model.frames.length+' published hours'+horizon+' · Generated '+formatTime(model.generated_at_utc||manifest.generated_at_utc)+' · Arrow keys step; space plays.';
       // Fetch only neighbors, rather than loading dozens of large PNGs at once.
       for(const neighbor of [index+1,index-1])if(model.frames[neighbor])loadImage(fileURL(model.frames[neighbor])).catch(()=>{});
       if(playing)timer=setTimeout(()=>showFrame(nextLoopIndex()),Number(speed.value));

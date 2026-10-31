@@ -28,7 +28,8 @@ if (browserSection) {
       text(article,'h3',product.title);
       const issued=product.issued_at_utc;
       const validStart=product.valid_start_utc,validEnd=product.valid_end_utc;
-      text(article,'p',product.source_date?`Foliage model date: ${product.source_date}`:`Issued ${issued.replace('T',' ')} · Valid ${validStart.replace('T',' ')} to ${validEnd.replace('T',' ')}`,'outlook-valid');
+      text(article,'p',product.source_date?`Foliage model date: ${product.source_date}`:`${product.timestamp_kind||'Issued'} ${issued.replace('T',' ')} · Valid ${validStart.replace('T',' ')} to ${validEnd.replace('T',' ')}`,'outlook-valid');
+      if(product.retained_from_previous_publication)text(article,'p','The latest update failed for this product. Showing its previous successful version with the original dates.','sunset-status sunset-stale');
       const expired=product.source_date?product.source_date!==new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()):Date.parse(validEnd)<=Date.now();
       if(expired)text(article,'p','This product is from an earlier date or has passed its valid interval. A newer product is not available here yet.','sunset-status sunset-stale');
       const base=new URL(browserSection.dataset.weatherManifest,document.baseURI);
