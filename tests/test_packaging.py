@@ -55,10 +55,10 @@ def test_workflow_generates_every_packaged_product_before_publishing():
     workflow=(Path(__file__).resolve().parents[1]/'.github/workflows/sunset.yml').read_text()
     products=re.search(r'product: \[([^\]]+)\]',workflow).group(1)
     assert {p.strip() for p in products.split(',')}==set(export.PRODUCTS)-{'models'}
-    assert 'needs: [verify, generate]' in workflow
+    assert 'needs: verify' in workflow
     assert 'fail-fast: false' in workflow
     assert '--check --product "$PRODUCT"' in workflow
-    assert 'merge-multiple: true' in workflow
+    assert "if: always() && steps.stage.outcome == 'success'" in workflow
     assert 'timezone: America/New_York' in workflow
     assert 'timeout-minutes: 40' in workflow
     assert '--only-binary=:all:' in workflow
@@ -69,3 +69,4 @@ def test_workflow_generates_every_packaged_product_before_publishing():
     publish=(Path(__file__).resolve().parents[1]/'.github/workflows/publish.yml').read_text()
     assert 'workflows: [Daily weather and sunset outlooks, Scheduled weather models]' in publish
     assert 'scripts.collect_publication' in publish
+    assert 'workflow_run.conclusion ==' not in publish

@@ -52,7 +52,7 @@ def test_unavailable_models_do_not_block_outlook_packaging(tmp_path,monkeypatch)
     monkeypatch.setattr(export,'ROOT',tmp_path)
     collect.unavailable_models(tmp_path)
     paths=list(export.product_files('models'))
-    assert len(paths)==3
+    assert len(paths)==1
     assert json.loads((tmp_path/'generated/models/latest.json').read_text())['models']==[]
 
 
@@ -68,9 +68,54 @@ def test_artifacts_keep_family_boundaries_and_reject_path_traversal(tmp_path):
         with pytest.raises(ValueError,match='Unsafe'):collect.extract(archive,tmp_path,{'sunset'})
 
 
-def test_latest_bundle_ignores_failed_and_expired_runs(monkeypatch):
+def test_independent_artifacts_keep_valid_jobs_even_if_other_jobs_failed(monkeypatch):
     def api(path,token):
-        if '/workflows/' in path:return {'workflow_runs':[{'id':2,'head_branch':'main'},{'id':1,'head_branch':'main'}]}
-        return {'artifacts':[{'name':'models-bundle','expired':'/2/' in path,'id':99}]}
+        return {'artifacts':[
+            {'name':'model-gfs','expired':False,'id':99,'created_at':'2026-10-31T00:00:00Z','workflow_run':{'head_branch':'main'}},
+            {'name':'model-gfs','expired':True,'id':100,'created_at':'2026-10-31T01:00:00Z','workflow_run':{'head_branch':'main'}}]}
     monkeypatch.setattr(collect,'api',api)
-    assert collect.latest_artifact('owner/repo','models.yml','models-bundle','fake')['id']==99
+    assert collect.artifact_candidates('owner/repo','model-gfs','fake')[0]['id']==99
+
+
+def test_nam_only_still_publishes_when_gfs_and_hrrr_have_no_successful_run(tmp_path):
+    part(tmp_path/'parts','nam')
+    result=merge.merge(tmp_path/'parts',tmp_path/'out',allow_missing=True)
+    assert [m['id'] for m in result['models'] if m['status']=='available']==['nam']
+    assert json.loads((tmp_path/'out/airports/latest.json').read_text())['models']==[]
+
+
+def test_publisher_keeps_other_products_when_one_product_raises(tmp_path,monkeypatch):
+    monkeypatch.setattr(collect,'ROOT',tmp_path)
+    monkeypatch.setenv('GH_TOKEN','fixture');monkeypatch.setenv('GITHUB_REPOSITORY','fixture/repo')
+    def restore(repository,product,token,temporary):
+        if product=='weather':raise ValueError('failed weather fixture')
+        if product!='centers':return False
+        folder=tmp_path/'generated/centers';folder.mkdir(parents=True)
+        (folder/'latest.json').write_text('{"schema_version":1,"products":[]}')
+        return True
+    monkeypatch.setattr(collect,'restore_product',restore)
+    monkeypatch.setattr(collect,'restore_model',lambda *args:False)
+    assert collect.main()==0
+    assert json.loads((tmp_path/'generated/weather/latest.json').read_text())['status']=='unavailable'
+    assert json.loads((tmp_path/'generated/centers/latest.json').read_text()).get('status')!='unavailable'
+    for product in export.PRODUCTS:list(export.product_files(product,tmp_path))
+
+
+def test_partial_weather_restores_old_missing_maps_without_overwriting_new_spc(tmp_path,monkeypatch):
+    monkeypatch.setattr(collect,'ROOT',tmp_path/'site')
+    monkeypatch.setattr(collect,'artifact_candidates',lambda *args:[{'id':2},{'id':1}])
+    old_ids=['spc-day1','spc-day2','spc-day3','weather-national','weather-nc','rain-national','rain-nc']
+    def download(repository,artifact,token,target):
+        ids=old_ids[:3] if artifact['id']==2 else old_ids
+        products=[dict(id=id,image_filename=id+'.png',generated_at_utc='new' if artifact['id']==2 else 'old') for id in ids]
+        with ZipFile(target,'w') as z:
+            z.writestr('generated/weather/latest.json',json.dumps({'products':products,'foliage_status':'out_of_season'}))
+            for id in ids:z.writestr('generated/weather/'+id+'.png',str(artifact['id']))
+    monkeypatch.setattr(collect,'download_artifact',download)
+    temp=tmp_path/'temporary';temp.mkdir()
+    assert collect.restore_product('repo','weather','fixture',temp)
+    folder=tmp_path/'site/generated/weather';manifest=json.loads((folder/'latest.json').read_text())
+    assert len(manifest['products'])==7
+    assert len(manifest['retained_products'])==4
+    assert (folder/'spc-day1.png').read_text()=='2'
+    assert (folder/'rain-nc.png').read_text()=='1'

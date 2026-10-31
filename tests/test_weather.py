@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import importlib
 from pathlib import Path
 import json
@@ -8,6 +8,7 @@ import pytest
 from scipy.spatial import cKDTree
 
 from weather.sources import wmo_time,validate_spc,sample_ndfd,parse_iso
+from weather.sources import validate_ndfd_reference
 
 UTC=timezone.utc
 NOW=datetime(2026,10,30,7,tzinfo=UTC)
@@ -67,3 +68,31 @@ def test_weather_download_failure_preserves_existing_manifest(tmp_path,monkeypat
     with pytest.raises(RuntimeError,match='upstream'):
         pipeline.run()
     assert json.loads(old.read_text())=={'previous':True}
+
+
+def test_ndfd_nominal_cycle_can_lead_download_time_by_one_production_slot():
+    checked=datetime(2026,10,31,18,18,tzinfo=UTC)
+    validate_ndfd_reference(datetime(2026,10,31,18,30,tzinfo=UTC),checked)
+    validate_ndfd_reference(checked+timedelta(minutes=30),checked)
+    for reference in [checked+timedelta(minutes=31),checked-timedelta(hours=25)]:
+        with pytest.raises(ValueError,match='outside allowed window'):validate_ndfd_reference(reference,checked)
+
+
+def test_ndfd_failure_still_saves_successful_spc_products_and_returns_failure(tmp_path,monkeypatch):
+    from shapely.geometry import box
+    pipeline=importlib.import_module('weather.__main__')
+    monkeypatch.setattr(pipeline,'ROOT',tmp_path)
+    monkeypatch.setattr(pipeline,'geography',lambda *args:(box(-130,20,-60,55),[],[]))
+    monkeypatch.setattr(pipeline,'get_nc',lambda *args:box(-85,33,-75,37))
+    monkeypatch.setattr(pipeline,'get_spc',lambda *args:([],{'source':'SPC test fixture'}))
+    monkeypatch.setattr(pipeline,'render',lambda path,*args,**kwargs:path.write_bytes(b'test image'))
+    def failed(*args):raise ValueError('NDFD source failure fixture')
+    monkeypatch.setattr(pipeline,'get_ndfd',failed)
+    monkeypatch.setattr(pipeline,'get_foliage',lambda *args:(None,{'status':'out_of_season'}))
+    result=pipeline.run()
+    assert [p['id'] for p in result['products']]==['spc-day1','spc-day2','spc-day3']
+    assert result['failed_products'][0]['id']=='ndfd-daytime'
+    assert result['status']=='partial'
+    assert (tmp_path/'generated/weather/latest.json').is_file()
+    monkeypatch.setattr(pipeline,'run',lambda:result)
+    assert pipeline.main()==1
