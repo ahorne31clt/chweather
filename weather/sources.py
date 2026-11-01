@@ -76,6 +76,31 @@ def validate_spc(collection, text, day, now):
     return records, dict(issued_at_utc=iso(issue),valid_start_utc=iso(start),valid_end_utc=iso(end),summary=summary)
 
 
+def validate_spc_polygons(collection, now):
+    """Validate a standalone official map without borrowing a mismatched discussion."""
+    if collection.get('type') != 'FeatureCollection' or not collection.get('features'):
+        raise ValueError('Standalone SPC polygons require nonempty dated features')
+    properties=collection['features'][0]['properties']
+    issue,start,end=(datetime.strptime(properties[key], '%Y%m%d%H%M').replace(tzinfo=UTC)
+                     for key in ('ISSUE','VALID','EXPIRE'))
+    if issue > now+timedelta(minutes=10) or now-issue > timedelta(hours=48) or end <= now or not start < end:
+        raise ValueError('SPC data are expired or have invalid dates')
+    records=[]
+    for feature in collection['features']:
+        prop=feature['properties']
+        if prop['LABEL'] not in SPC_CATEGORIES:
+            raise ValueError('Unknown SPC risk category; do not substitute a category')
+        if any(prop[key] != properties[key] for key in ('ISSUE','VALID','EXPIRE')):
+            raise ValueError('SPC polygon features are from different issuances')
+        geometry=shape(feature['geometry'])
+        if geometry.is_empty or not geometry.is_valid:
+            raise ValueError('Invalid SPC geometry')
+        records.append((prop['LABEL'],geometry))
+    return records,dict(issued_at_utc=iso(issue),valid_start_utc=iso(start),valid_end_utc=iso(end),
+        summary='Official SPC categorical areas shown. See SPC for the latest discussion.',
+        discussion_status='omitted_issuance_mismatch')
+
+
 def get_spc(http, cache, day, now):
     base = f'https://www.spc.noaa.gov/products/outlook/day{day}otlk'
     # A product can update between the two requests; retry the pair once.
@@ -88,8 +113,21 @@ def get_spc(http, cache, day, now):
             records, meta = validate_spc(json.loads(path.read_text()),text_path.read_text(),day,now)
             return records,dict(meta,source_urls=[base+'_cat.nolyr.geojson',base+'.txt'],
                                 source='NOAA/NWS Storm Prediction Center',kind='Official SPC categorical outlook; CH Weather presentation')
-        except ValueError:
-            if attempt: raise
+        except ValueError as error:
+            if str(error) != 'SPC polygons and discussion are from different issuances':
+                raise
+            if attempt:
+                # The upstream map and text can disagree (including clock changes).
+                # Keep the dated official map, never attach the other issuance's prose.
+                records,meta=validate_spc_polygons(json.loads(path.read_text()),now)
+                valid=re.search(r'Valid\s+(\d{6})Z\s*-\s*(\d{6})Z',text_path.read_text())
+                if not valid or any(parse_iso(meta[key]).strftime('%d%H%M') != valid[i]
+                        for key,i in [('valid_start_utc',1),('valid_end_utc',2)]):
+                    raise ValueError('SPC map and discussion validity periods disagree')
+                return records,dict(meta,source_urls=[base+'_cat.nolyr.geojson'],
+                    source='NOAA/NWS Storm Prediction Center',
+                    kind='Official SPC categorical outlook; CH Weather presentation',
+                    discussion_note=str(error))
 
 
 def ndfd_period(message):
