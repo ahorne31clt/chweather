@@ -96,3 +96,30 @@ def test_ndfd_failure_still_saves_successful_spc_products_and_returns_failure(tm
     assert (tmp_path/'generated/weather/latest.json').is_file()
     monkeypatch.setattr(pipeline,'run',lambda:result)
     assert pipeline.main()==1
+
+
+def test_standalone_spc_keeps_polygon_time_without_mismatched_prose():
+    from weather.sources import validate_spc_polygons
+    collection={'type':'FeatureCollection','features':[feature(issue='202610300500')]}
+    records,meta=validate_spc_polygons(collection,NOW)
+    assert len(records)==1
+    assert meta['issued_at_utc']=='2026-10-30T05:00:00Z'
+    assert meta['discussion_status']=='omitted_issuance_mismatch'
+    assert 'No severe' not in meta['summary']
+    collection['features'].append(feature(issue='202610300600'))
+    with pytest.raises(ValueError,match='different issuances'):
+        validate_spc_polygons(collection,NOW)
+
+
+def test_spc_mismatched_pair_retries_then_uses_only_valid_map(tmp_path,monkeypatch):
+    import weather.sources as sources
+    calls=[]
+    def fake_download(http,url,path,**kwargs):
+        calls.append(url)
+        path.write_text(json.dumps({'type':'FeatureCollection','features':[feature(issue='202610300500')]})
+                        if url.endswith('geojson') else TEXT)
+    monkeypatch.setattr(sources,'download',fake_download)
+    records,meta=sources.get_spc(None,tmp_path,1,NOW)
+    assert len(calls)==4 and len(records)==1
+    assert meta['discussion_status']=='omitted_issuance_mismatch'
+    assert all(url.endswith('geojson') for url in meta['source_urls'])
