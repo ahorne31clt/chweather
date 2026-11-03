@@ -1,0 +1,77 @@
+name: Seasonal climate outlooks
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+      timezone: America/New_York
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'seasonal/**'
+      - 'tests/test_seasonal*.py'
+      - '.github/workflows/seasonal.yml'
+
+concurrency:
+  group: seasonal-generation
+  cancel-in-progress: false
+permissions:
+  contents: read
+env:
+  MPLBACKEND: Agg
+  PYTHONUNBUFFERED: '1'
+  OMP_NUM_THREADS: '1'
+  OPENBLAS_NUM_THREADS: '1'
+  TZ: UTC
+jobs:
+  seasonal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-sunset*.txt
+      - name: Install native ecCodes library
+        timeout-minutes: 5
+        run: |
+          sudo timeout 120 apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 update -qq
+          sudo timeout 120 apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 install -y --no-install-recommends libeccodes0
+      - name: Install prebuilt dependencies
+        timeout-minutes: 15
+        run: python -m pip install --only-binary=:all: --timeout 30 --retries 2 -r requirements-sunset-dev.txt
+      - name: Test seasonal calculations
+        run: python -m pytest -q tests/test_seasonal.py tests/test_seasonal_verification.py
+      - name: Cache bounded monthly source files
+        uses: actions/cache@v5
+        with:
+          path: .cache/seasonal
+          key: seasonal-v2-${{ github.run_id }}
+          restore-keys: seasonal-v2-
+      - name: Clear checkout manifest
+        run: python -c "from pathlib import Path; Path('generated/seasonal/latest.json').unlink(missing_ok=True)"
+      - name: Fetch data, calculate outlooks, and render maps
+        id: generate
+        timeout-minutes: 60
+        run: python -m seasonal
+      - name: Validate every published asset
+        id: validate
+        if: always() && steps.generate.outcome == 'success'
+        run: python scripts/package_site.py --check --product seasonal
+      - name: Stage independent seasonal artifact
+        id: stage
+        if: always() && steps.validate.outcome == 'success'
+        run: |
+          mkdir -p "$RUNNER_TEMP/seasonal/generated"
+          cp -a generated/seasonal "$RUNNER_TEMP/seasonal/generated/"
+      - name: Upload seasonal maps without blocking other products
+        if: always() && steps.stage.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: forecast-seasonal
+          path: ${{ runner.temp }}/seasonal/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 35

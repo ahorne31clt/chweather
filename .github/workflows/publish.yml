@@ -2,7 +2,7 @@ name: Publish latest weather website
 
 on:
   workflow_run:
-    workflows: [Daily weather and sunset outlooks, Scheduled weather models]
+    workflows: [Daily weather and sunset outlooks, Scheduled weather models, Seasonal climate outlooks]
     types: [completed]
     branches: [main]
   workflow_dispatch:
