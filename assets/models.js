@@ -19,7 +19,7 @@ if(modelStage){
   }
   function fileURL(frame){
     const image=frame.images?.[field.value]||(field.value==='precip'?frame:null);
-    if(!image||!/^(gfs|hrrr|nam)-\d{10}-f\d{3}(-(temp2m|dewpoint2m|wind500|vort500|wind10|rh2m|mslp|sbcape))?\.png$/.test(image.image_filename))throw new Error('This field is not published for this model run.');
+    if(!image||!/^(gfs|hrrr)-\d{10}-f\d{3}(-(temp2m|dewpoint2m|wind500|vort500|wind10|rh2m|mslp|sbcape))?\.png$/.test(image.image_filename))throw new Error('This field is not published for this model run.');
     const url=new URL(image.image_filename,base);url.searchParams.set('v',image.image_sha256);return url.href;
   }
   const smoothing=document.querySelector('#model-smoothing');
@@ -188,7 +188,7 @@ if(modelStage){
       const updated=await response.json();
       if(!Number.isFinite(Date.parse(updated.generated_at_utc)))throw new Error('Updated publication time could not be verified. Current run retained.');
       if(Date.parse(updated.generated_at_utc)<Date.parse(manifest.generated_at_utc))return;
-      const available=updated.models?.filter(item=>['gfs','hrrr','nam'].includes(item.id)&&item.status==='available'&&item.frames?.length);
+      const available=updated.models?.filter(item=>['gfs','hrrr'].includes(item.id)&&item.status==='available'&&item.frames?.length);
       if(!available?.length||available.some(item=>!Number.isFinite(Date.parse(item.model_run))||item.frames.some(frame=>!Number.isInteger(frame.hour)||!Number.isFinite(Date.parse(frame.valid_time_utc)))))throw new Error('Updated model metadata could not be verified. Current run retained.');
       if(updated.generated_at_utc===manifest.generated_at_utc&&available.every(item=>manifest.models.some(old=>old.id===item.id&&old.model_run===item.model_run)))return;
       const wanted=Date.parse(model.frames[index].valid_time_utc),nextModel=available.find(item=>item.id===model.id)||available[0];
@@ -208,7 +208,7 @@ if(modelStage){
     try{
       const response=await fetch(base,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('Model guidance is temporarily unavailable. Please check back after the next update.');
       manifest=await response.json();
-      const available=manifest.models?.filter(item=>['gfs','hrrr','nam'].includes(item.id)&&item.status==='available'&&item.frames?.length);
+      const available=manifest.models?.filter(item=>['gfs','hrrr'].includes(item.id)&&item.status==='available'&&item.frames?.length);
       if(!available?.length)throw new Error('No model cycle is available right now. Please check back later.');
       for(const item of available){if(!Number.isFinite(Date.parse(item.model_run))||item.frames.some(frame=>!Number.isInteger(frame.hour)||!Number.isFinite(Date.parse(frame.valid_time_utc))))throw new Error('Model metadata could not be read. Please check back later.');}
       for(const option of select.options){const item=available.find(item=>item.id===option.value);option.disabled=!item;if(!item)option.textContent=option.value.toUpperCase()+' unavailable';}
