@@ -1,12 +1,11 @@
 # CH Weather model room
 
-Open `/models/`. This is a plain HTML/CSS/JavaScript viewer of graphics generated from real NOAA/NCEP numerical model output. The map fills the available width, with compact controls below it. Select GFS/HRRR/NAM and a map field, then use the timeline, previous/next, playback speed, arrow keys, space, zoom/drag, Fit, fullscreen, and PNG download. The Map guide explains the fields. Times on the graphics are always UTC; the control bar also offers Eastern time.
+Open `/models/`. This is a plain HTML/CSS/JavaScript viewer of graphics generated from real NOAA/NCEP numerical model output. The map fills the available width, with compact controls below it. Select GFS/HRRR and a map field, then use the timeline, previous/next, playback speed, arrow keys, space, zoom/drag, Fit, fullscreen, and PNG download. The Map guide explains the fields. Times on the graphics are always UTC; the control bar also offers Eastern time.
 
 ## Data and fields
 
 - **GFS:** NOAA NOMADS 0.25-degree GRIB filter, CONUS subset, forecast hours 0–384 every 3 hours (129 frames), covering the full 16-day run. The published cadence stays at three hours throughout.
 - **HRRR:** NOAA NOMADS 2-D surface-file GRIB filter, native 3 km CONUS grid, hours 0–48 hourly (49 frames) from 00/06/12/18 UTC extended cycles. If no complete extended cycle is available, the viewer explicitly falls back to a recent 0–18-hour sequence (19 frames). Precipitation pixels retain the model grid; the rendered PNG is 2400 × 1350.
-- **NAM:** NOAA 12 km CONUS pressure-level grid, F000-F084 every three hours (29 times). Eight parameters are published; instantaneous precipitation rate/type and airport rate meteograms are unavailable because this feed does not provide the PRATE field used by those products. No substitute is fabricated.
 - **New surface fields:** 10 m sustained wind speed/barbs in knots, native model 2 m relative humidity in percent, standalone mean sea-level pressure in hPa with 4-hPa contours and H/L centers, and surface-based CAPE in J/kg. CAPE uses the surface parcel, not a mixed-layer or most-unstable parcel, and is not a probability of severe weather. These use actual UGRD/VGRD, RH, PRMSL/MSLMA, and surface CAPE model fields.
 - **Precipitation type:** instantaneous CRAIN, CSNOW, CFRZR, and CICEP categorical flags. A single active flag identifies rain, snow, freezing rain, or sleet. Multiple flags are labeled mixed; a rate without a type flag is unclassified. No category is inferred from thickness. This is a categorical field, not a precipitation-type probability.
 - **2 m temperature / dewpoint:** separate Fahrenheit maps from instantaneous TMP/DPT at 2 m above ground. City labels and the denser evenly spaced CONUS land-value readouts use the nearest native grid point. Hover or tap for both values; these readouts sample the native fields onto an 4-image-pixel display grid (roughly 10 km in this national view), not exact-address conditions. Maps and values share the same initialization and valid time. A city value and nearby pointer sample can differ because they sample different native grid points.
@@ -41,7 +40,7 @@ For a small preview only:
 python -m models --gfs-end 6 --gfs-step 3 --hrrr-end 2 --hrrr-step 1
 ```
 
-This publishes only those six frames. Run the default command again for the full 207 forecast times: 9 parameters for GFS/HRRR and 8 for NAM (1,834 PNGs) when extended HRRR is available. GFS end hour must be divisible by its step (3, 6, or 12); HRRR step choices are 1, 2, 3, or 6. Maximum ends are 384 and 48 respectively; `--nam-end` accepts multiples of 3 through 84.
+This publishes only those six frames. Run the default command again for the full 178 forecast times: 9 parameters for GFS/HRRR (1,602 PNGs) when extended HRRR is available. GFS end hour must be divisible by its step (3, 6, or 12); HRRR step choices are 1, 2, 3, or 6. Maximum ends are 384 and 48 respectively.
 
 The generator considers three recent GFS cycles. For HRRR requests beyond 18 hours, it first considers three recent 00/06/12/18 UTC cycles, each for the complete requested extended horizon. Only if all three fail does it try three recent hourly cycles through 18 hours. It allows four hours for GFS dissemination and two for HRRR. This favors the latest complete extended HRRR run over a newer short hourly run. The actual initialization and last forecast hour remain visible; the viewer explicitly labels an 18-hour fallback.
 
@@ -82,16 +81,16 @@ Use the Meteogram button in the viewer to search more than 15,000 CONUS airports
 
 ## Viewer navigation improvements
 
-Region presets (CONUS, Carolinas, Southeast, Northeast, Plains, West) crop and zoom the existing national graphic, with a pinned color key. They do not create a finer weather grid. Cropping centers are projected separately for each model, rather than using the same pixel position for all projections. Wind vectors respect GRIB earth/grid-relative orientation. NAM uses its 12 km native Lambert grid; GFS and HRRR resolutions are unchanged.
+Region presets (CONUS, Carolinas, Southeast, Northeast, Plains, West) crop and zoom the existing national graphic, with a pinned color key. They do not create a finer weather grid. Cropping centers are projected separately for each model, rather than using the same pixel position for all projections. Wind vectors respect GRIB earth/grid-relative orientation. GFS and HRRR resolutions are unchanged.
 
 Changing models selects the nearest available UTC valid time and reports when no exact match exists. A parameter absent from the new model is disabled; the viewer labels its fallback parameter. Tools / guide includes loop start/end selectors, a forecast-hour jump, and Copy link. Left/right arrows step within the selected loop; Home/End choose its bounds and Space plays/pauses. The main slider can still inspect any published hour. Shared URLs preserve model, parameter, run identifier, forecast hour, region or custom zoom, time zone, and loop bounds. Only current published cycles are retained: if a shared run has been replaced, the viewer explicitly reports that it is showing the latest cycle.
 
-NAM source: [NCEP NAM product inventory](https://www.nco.ncep.noaa.gov/pmb/products/nam/nam.t00z.awphys06.tm00.grib2.shtml). Surface/convective parameters are fetched as separate bounded GRIB subsets and validated for units, level, initialization, lead, grid, and valid time. GRIB multi-field support decodes NAM's paired U/V records.
+Surface/convective parameters are fetched as separate bounded GRIB subsets and validated for units, level, initialization, lead, grid, and valid time.
 
 ## Viewer-only asset refresh
 
 `python -m models.viewer_assets` regenerates universal probes and annotation layers from the currently published runs and their model cache without selecting a newer cycle. `--probes-only` updates only the compact numeric data. Normal `python -m models` now produces both automatically.
 # Independent scheduled model runs
 
-`.github/workflows/models.yml` generates GFS, HRRR and NAM in three parallel jobs at 05:30, 11:30, 17:30 and 23:30 UTC. Each uses `python -m models --model gfs` (or `hrrr` / `nam`), preserving the full forecast range and all supported parameters. GFS/HRRR airport data is generated within its matching job. These runs do not block the separate outlook workflow. The dedicated publisher combines each latest validated model and outlook artifact. See [workflow setup](FIX-AUTOMATIC-UPDATES.md). The original `python -m models` command still generates all three models locally.
+`.github/workflows/models.yml` generates GFS and HRRR in two parallel jobs at 05:30, 11:30, 17:30 and 23:30 UTC. Each uses `python -m models --model gfs` (or `hrrr`), preserving the full forecast range and all supported parameters. GFS/HRRR airport data is generated within its matching job. These runs do not block the separate outlook workflow. The dedicated publisher combines each latest validated model and outlook artifact. See [workflow setup](FIX-AUTOMATIC-UPDATES.md). The original `python -m models` command still generates both models locally.
 
