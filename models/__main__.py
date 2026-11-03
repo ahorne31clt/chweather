@@ -44,8 +44,7 @@ def run(args):
     cache=ROOT/'.cache/models';cache.mkdir(parents=True,exist_ok=True)
     output=ROOT/'generated/models';output.mkdir(parents=True,exist_ok=True)
     specs=[('gfs',cycle_plans('gfs',now,args.gfs_end,args.gfs_step)),
-           ('hrrr',cycle_plans('hrrr',now,args.hrrr_end,args.hrrr_step)),
-           ('nam',cycle_plans('nam',now,getattr(args,'nam_end',84),3))]
+           ('hrrr',cycle_plans('hrrr',now,args.hrrr_end,args.hrrr_step))]
     if getattr(args,'model',None):specs=[spec for spec in specs if spec[0]==args.model]
     results=[]
     with session() as http,tempfile.TemporaryDirectory(dir=output) as staging:
@@ -133,12 +132,11 @@ def run(args):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--model',choices=['gfs','hrrr','nam'],help='Generate one independent model job; default generates all three')
+    parser.add_argument('--model',choices=['gfs','hrrr'],help='Generate one independent model job; default generates both')
     parser.add_argument('--gfs-end',type=int,choices=range(0,385),default=384)
     parser.add_argument('--gfs-step',type=int,choices=[3,6,12],default=3)
     parser.add_argument('--hrrr-end',type=int,choices=range(0,49),default=48)
     parser.add_argument('--hrrr-step',type=int,choices=[1,2,3,6],default=1)
-    parser.add_argument('--nam-end',type=int,choices=list(range(0,85,3)),default=84)
     parser.add_argument('--workers',type=int,choices=[1,2],default=2,help='Bounded render processes (use 1 on a small machine)')
     args=parser.parse_args()
     logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
