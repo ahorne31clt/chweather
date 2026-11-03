@@ -6,3 +6,4 @@ output/pdf/*-preview.png
 .cache/
 .pytest_cache/
 _site/
+radar/node_modules/
