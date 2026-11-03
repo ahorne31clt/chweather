@@ -1,0 +1,9 @@
+__pycache__/
+output/*.png
+output/*.zip
+output/pdf/*-preview.png
+.venv/
+.cache/
+.pytest_cache/
+_site/
+radar/node_modules/

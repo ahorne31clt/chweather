@@ -1,0 +1,2 @@
+# Optional staging downloader only. Core seasonal forecasts do not require CDS.
+cdsapi>=0.7.7,<0.8

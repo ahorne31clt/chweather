@@ -4,7 +4,7 @@ Static HTML, CSS, and JavaScript. No build system, account, or paid service requ
 
 The [CH Weather Outlook Collection](outlooks/collection.html) adds national/NC daily weather with official WPC fronts, outdoor conditions, stargazing, frost/freeze, snow, ice, comfort, and temperature confidence. Run `python -m specialty --product all`, or use the independent scheduled jobs. Main-site dropdowns retain existing page URLs. See [methods, source attribution, changed files, and upload steps](docs/OUTLOOK-COLLECTION.md).
 
-**Independent automatic updates:** upload all three workflows: `sunset.yml` for outlooks, `models.yml` for separate parallel GFS/HRRR/NAM jobs four times daily, and `publish.yml` to combine each newest validated product artifact. Slow model rendering no longer blocks sunset or outlook updates. Follow [the exact upload and activation steps](docs/FIX-AUTOMATIC-UPDATES.md).
+**Independent automatic updates:** upload all three workflows: `sunset.yml` for outlooks, `models.yml` for separate parallel GFS/HRRR jobs four times daily, and `publish.yml` to combine each newest validated product artifact. Slow model rendering no longer blocks sunset or outlook updates. Follow [the exact upload and activation steps](docs/FIX-AUTOMATIC-UPDATES.md).
 
 **Partial failures now publish safely:** successful product artifacts upload even when another job fails, and the publisher retains previous successful data with its original timestamps. The NDFD nominal-cycle timing check is repaired. See [the current update instructions](docs/PARTIAL-UPDATES.md).
 
@@ -41,7 +41,7 @@ Navigation and footer markup are present in each HTML file so pages work without
 
 ## Model room
 
-`/models/` is the map-first GFS/HRRR viewer. Choose GFS, HRRR, or NAM 12 km. Parameters include precipitation type/pressure/thickness, 2 m temperature/dewpoint/humidity, 10 m wind, sea-level pressure, surface-based CAPE, 500 mb height/wind, and absolute vorticity from real NOAA data. NAM omits the unsupported instantaneous precip product and airport rate meteograms. Region presets, matching UTC valid times between models, loop bounds, forecast-hour jump, pinned legends, and shareable URLs improve navigation. Temperature/dewpoint maps include dense values and pointer/tap readouts that account for zoom and pan. State/country borders are dark for contrast, and 500 mb wind maps include barbs. The Meteogram button searches CONUS airports and charts model temperature, 10 m sustained wind, and instantaneous precipitation rate; PNG and CSV downloads are available. GFS covers the full 384-hour horizon every three hours; HRRR prefers 48-hour extended cycles and falls back to 18 hours when necessary. Generate with `python -m models`; the daily workflow runs this before publishing. See [model setup and science](docs/MODELS.md) and [exact changed files](docs/CHANGES-MODELS.md). The GitHub source ZIP excludes model images; Actions generates them. The static website ZIP includes the generated frames.
+`/models/` is the map-first GFS/HRRR viewer. Choose GFS or HRRR. Parameters include precipitation type/pressure/thickness, 2 m temperature/dewpoint/humidity, 10 m wind, sea-level pressure, surface-based CAPE, 500 mb height/wind, and absolute vorticity from real NOAA data. Region presets, matching UTC valid times between models, loop bounds, forecast-hour jump, pinned legends, and shareable URLs improve navigation. Temperature/dewpoint maps include dense values and pointer/tap readouts that account for zoom and pan. State/country borders are dark for contrast, and 500 mb wind maps include barbs. The Meteogram button searches CONUS airports and charts model temperature, 10 m sustained wind, and instantaneous precipitation rate; PNG and CSV downloads are available. GFS covers the full 384-hour horizon every three hours; HRRR prefers 48-hour extended cycles and falls back to 18 hours when necessary. Generate with `python -m models`; the daily workflow runs this before publishing. See [model setup and science](docs/MODELS.md) and [exact changed files](docs/CHANGES-MODELS.md). The GitHub source ZIP excludes model images; Actions generates them. The static website ZIP includes the generated frames.
 
 ## Social embeds
 
@@ -79,7 +79,7 @@ The transcript is deliberately not included in the website files. Grades, GPA, b
 
 ## MOS bulletin data
 
-`/mos/` looks up original GFS MAV, NAM MET, extended GFS MEX and LAMP LAV bulletins for CONUS airports, with source/run times, raw TXT export, airport search and a reading guide. Loaded directly from IEM; no additional Actions generation job. See [MOS details and changed files](docs/MOS.md).
+`/mos/` looks up original GFS MAV, extended GFS MEX and LAMP LAV bulletins for CONUS airports, with source/run times, raw TXT export, airport search and a reading guide. Loaded directly from IEM; no additional Actions generation job. See [MOS details and changed files](docs/MOS.md).
 
 ## REFS / GEFS ensemble probabilities
 
@@ -92,3 +92,11 @@ The transcript is deliberately not included in the website files. Grades, GPA, b
 
 Open `radar/index.html` through your web server for real NEXRAD Level II site data and MRMS reflectivity, rate, and precipitation accumulation. Public NOAA feeds load directly in the browser; no new credentials or scheduled job. See [radar documentation](docs/RADAR.md) for products, source attribution, build instructions, and the changed-file list.
 
+
+## Seasonal climate outlooks
+
+Open `/seasonal/` for the experimental **CH Weather Blend**, six-model seasonal guidance, observed-state analogs, temperature/precipitation/snowfall anomalies, above/below-average maps and broad snowfall amount bands. A separate November–April view calculates full-season totals, anomalies, above/below-average chances and expected ranges without adding overlapping three-month maps. NMME, CFSv2 Monthly, CanSIPS and pure ENSO comparisons remain available. Run `python -m seasonal`. The independent **Seasonal climate outlooks** workflow checks daily at 9 AM New York time. See [SEASONAL.md](docs/SEASONAL.md) for the recipe, uncertainty, exact files and workflow setup.
+
+## Solar optics
+
+Open `/optics/` for experimental rainbow, halo, sundog and arc ingredient maps, hourly city viewing guidance, model profiles and an observation worksheet. Run `python -m optics`; the existing independent daily outlook workflow includes it. See [methods, sources, limitations and exact upload files](docs/SOLAR-OPTICS.md). Scores are unvalidated ingredient indices, never event probabilities.
