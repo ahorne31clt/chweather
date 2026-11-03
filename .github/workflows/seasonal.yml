@@ -41,7 +41,8 @@ jobs:
           sudo timeout 120 apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 install -y --no-install-recommends libeccodes0
       - name: Install prebuilt dependencies
         timeout-minutes: 15
-        run: python -m pip install --only-binary=:all: --timeout 30 --retries 2 -r requirements-sunset-dev.txt
+        run: |
+          python -m pip install --only-binary=:all: --timeout 30 --retries 2 -r requirements-sunset-dev.txt
       - name: Test seasonal calculations
         run: python -m pytest -q tests/test_seasonal.py tests/test_seasonal_verification.py
       - name: Cache bounded monthly source files
