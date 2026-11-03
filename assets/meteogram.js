@@ -6,6 +6,9 @@
   const svg=document.querySelector('#airport-chart'),slider=document.querySelector('#airport-hour');
   const base=new URL('../generated/models/airports/latest.json',document.baseURI);
   let metadata,catalog,selectedAirport,activeModel,series=[],selectedIndex=0,request=0;
+  let comparisons=[];
+  const overlay=document.querySelector("#airport-overlay");
+  overlay.addEventListener("change",loadSeries);
   const buckets=new Map();
   window.addEventListener('chweather:model-manifest-update',()=>{metadata=null;catalog=null;selectedAirport=undefined;activeModel=null;series=[];buckets.clear();content.hidden=true;});
   function time(value){return new Intl.DateTimeFormat('en-US',{timeZone:zone.value,month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}).format(new Date(value));}
@@ -51,20 +54,30 @@
       const map=document.querySelector('#model-stage');
       const hours=JSON.parse(map.dataset.modelHours||'[]');
       if(!model||model.model_run!==map.dataset.modelRun||model.id!==map.dataset.modelId||hours.length!==model.hours.length||hours.some((hour,i)=>hour!==model.hours[i]))throw new Error('Airport charts for this model run are still updating. Please check back after the next publication.');
-      const bucket=model.chunks.find(c=>selectedAirport>=c.start&&selectedAirport<c.start+c.count);
-      if(!bucket||!/^((gfs|hrrr)-\d{10}-airports-\d{4}\.bin)$/.test(bucket.filename))throw new Error('This airport is not available in the selected model.');
-      let buffer=buckets.get(bucket.filename);
-      if(!buffer){const url=new URL(bucket.filename,base);url.searchParams.set('v',bucket.sha256);buffer=await bytes(url,bucket.sha256);buckets.set(bucket.filename,buffer);if(buckets.size>6)buckets.delete(buckets.keys().next().value);}
-      if(buffer.byteLength!==bucket.count*model.times.length*3*4)throw new Error('Airport forecast data has an unexpected size.');
+      async function decode(model){
+        const bucket=model.chunks.find(c=>selectedAirport>=c.start&&selectedAirport<c.start+c.count);
+        if(!bucket||!/^(gfs|hrrr)-\d{10}-airports-\d{4}\.bin$/.test(bucket.filename))throw new Error('Airport data is unavailable for '+model.name);
+        let buffer=buckets.get(bucket.filename);
+        if(!buffer){const url=new URL(bucket.filename,base);url.searchParams.set('v',bucket.sha256);buffer=await bytes(url,bucket.sha256);buckets.set(bucket.filename,buffer);if(buckets.size>6)buckets.delete(buckets.keys().next().value);}
+        if(buffer.byteLength!==bucket.count*model.times.length*12)throw new Error('Airport data has an unexpected size.');
+        const view=new DataView(buffer),offset=(selectedAirport-bucket.start)*model.times.length*12;
+        const points=model.times.map((valid,i)=>({valid,timestamp:Date.parse(valid),hour:model.hours[i],temp:view.getFloat32(offset+i*12,true),wind:view.getFloat32(offset+i*12+4,true),rate:view.getFloat32(offset+i*12+8,true)/25.4}));
+        if(!points.some(p=>[p.temp,p.wind,p.rate].every(Number.isFinite)))throw new Error(model.name+' is unavailable at this airport.');
+        return {model,points};
+      }
+      const primary=await decode(model);let loaded=[primary],overlayNote='';
+      if(overlay.checked){
+        for(const other of metadata.models.filter(m=>m.id!==model.id&&['gfs','hrrr'].includes(m.id))){
+          try{loaded.push(await decode(other));}catch(error){overlayNote+=' '+error.message;}
+        }
+      }
       if(id!==request)return;
-      const view=new DataView(buffer),offset=(selectedAirport-bucket.start)*model.times.length*12;
-      series=model.times.map((valid,i)=>({valid,timestamp:Date.parse(valid),hour:model.hours[i],
-        temp:view.getFloat32(offset+i*12,true),wind:view.getFloat32(offset+i*12+4,true),rate:view.getFloat32(offset+i*12+8,true)/25.4}));
-      if(!series.some(p=>[p.temp,p.wind,p.rate].every(Number.isFinite)))throw new Error('The selected airport lies outside this model’s usable grid.');
+      series=primary.points;comparisons=loaded;
+      document.querySelector('#airport-comparison').textContent=loaded.map(c=>c.model.name+' initialized '+time(c.model.model_run)).join(' | ')+overlayNote;
       activeModel=model;selectedIndex=0;slider.min=0;slider.max=series.length-1;slider.value=0;
       document.querySelector('#airport-name').textContent=codes(catalog[selectedAirport])+' · '+catalog[selectedAirport].name;
       document.querySelector('#airport-run').textContent=model.name+' · Init '+time(model.model_run)+' · '+model.native_resolution+' · F000–F'+String(model.hours.at(-1)).padStart(3,'0');
-      content.hidden=false;status.textContent='Move over the chart, tap a forecast time, or use the time slider. Precipitation bars show instantaneous rate.';
+      content.hidden=false;status.textContent='Move over the chart, tap a forecast time, or use the time slider. Precipitation shows instantaneous rate. Overlay lines are restricted to the primary model’s displayed period.'+overlayNote;
       draw();selectTime(0);
     }catch(error){if(id===request){content.hidden=true;status.textContent=error.message;}}
   }
@@ -74,13 +87,13 @@
   function x(index){return series.length===1?(left+right)/2:left+(series[index].timestamp-series[0].timestamp)/(series.at(-1).timestamp-series[0].timestamp)*(right-left);}
   function draw(){
     svg.replaceChildren();add('rect',{width:1120,height:630,fill:'#151c18'});
-    add('text',{x:24,y:26,fill:'#E8EBE8','font-size':16,'font-weight':700},'CH WEATHER  /  '+codes(catalog[selectedAirport])+'  /  '+activeModel.name+' METEOGRAM');
-    add('text',{x:24,y:45,fill:'#9FB4AC','font-size':10},'INIT '+time(activeModel.model_run)+' · Nearest model grid point · '+catalog[selectedAirport].name);
+    add('text',{x:24,y:26,fill:'#E8EBE8','font-size':16,'font-weight':700},'CH WEATHER  /  '+codes(catalog[selectedAirport])+'  /  '+comparisons.map(c=>c.model.name).join(' + ')+' METEOGRAM');
+    add('text',{x:24,y:45,fill:'#9FB4AC','font-size':10},comparisons.map(c=>(c===comparisons[0]?'SOLID ':'DASHED ')+c.model.name+' INIT '+time(c.model.model_run)).join(' / '));
     const panels=[{key:'temp',name:'2 M TEMPERATURE / °F',color:'#76BA94'},
       {key:'wind',name:'10 M SUSTAINED WIND / kt',color:'#C19244'},
       {key:'rate',name:'INSTANTANEOUS PRECIP RATE / in/hr',color:'#72B6DD'}];
     panels.forEach((panel,r)=>{
-      const start=top+r*rowHeight,values=series.map(p=>p[panel.key]).filter(Number.isFinite);
+      const start=top+r*rowHeight,values=comparisons.flatMap(c=>c.points.filter(p=>p.timestamp>=series[0].timestamp&&p.timestamp<=series.at(-1).timestamp).map(p=>p[panel.key])).filter(Number.isFinite);
       const min=panel.key==='temp'?Math.floor((Math.min(...values)-5)/10)*10:0;
       const max=panel.key==='temp'?Math.ceil((Math.max(...values)+5)/10)*10:panel.key==='wind'?Math.max(20,Math.ceil((Math.max(...values)+3)/10)*10):Math.max(.05,Math.ceil(Math.max(...values)*20)/20);
       const y=value=>start+plotHeight-(value-min)/(max-min)*plotHeight;
@@ -91,13 +104,15 @@
         add('text',{x:left-10,y:py+4,fill:'#9FB4AC','text-anchor':'end','font-size':10},panel.key==='rate'?value.toFixed(2):value.toFixed(0));
       }
       if(panel.key==='temp'&&min<32&&max>32)add('line',{x1:left,x2:right,y1:y(32),y2:y(32),stroke:'#C9DBD0','stroke-opacity':.5,'stroke-dasharray':'4 5'});
-      if(panel.key==='rate'){
-        const width=Math.min(17,(right-left)/Math.max(1,series.length-1)*.65);
-        series.forEach((p,i)=>{if(Number.isFinite(p.rate)&&p.rate>0)add('rect',{x:x(i)-width/2,y:y(p.rate),width,height:Math.max(.5,y(0)-y(p.rate)),fill:panel.color,opacity:.85});});
-      }else{
-        let path='',open=false;series.forEach((p,i)=>{if(!Number.isFinite(p[panel.key])){open=false;return;}path+=(open?' L':' M')+x(i).toFixed(2)+' '+y(p[panel.key]).toFixed(2);open=true;});
-        add('path',{d:path,fill:'none',stroke:panel.color,'stroke-width':2.2,'stroke-linejoin':'round'});
-      }
+      comparisons.forEach((comparison,j)=>{
+        let path='',open=false;
+        comparison.points.forEach(p=>{
+          if(!Number.isFinite(p[panel.key])||p.timestamp<series[0].timestamp||p.timestamp>series.at(-1).timestamp){open=false;return;}
+          const px=left+(p.timestamp-series[0].timestamp)/(series.at(-1).timestamp-series[0].timestamp)*(right-left);
+          path+=(open?' L':' M')+px.toFixed(2)+' '+y(p[panel.key]).toFixed(2);open=true;
+        });
+        add('path',{d:path,fill:'none',stroke:j?'#E4B96F':panel.color,'stroke-width':2.2,'stroke-dasharray':j?'7 3':'none'});
+      });
       for(let tick=0;tick<=6;tick++){
         const i=Math.round((series.length-1)*tick/6),px=x(i);
         add('line',{x1:px,x2:px,y1:start,y2:start+plotHeight,stroke:'#748c7c','stroke-opacity':.15,'stroke-width':.7});
@@ -115,6 +130,8 @@
     document.querySelector('#airport-temp').textContent=Number.isFinite(p.temp)?p.temp.toFixed(1)+'°F':'Unavailable';
     document.querySelector('#airport-wind').textContent=Number.isFinite(p.wind)?p.wind.toFixed(1)+' kt':'Unavailable';
     document.querySelector('#airport-precip').textContent=Number.isFinite(p.rate)?p.rate.toFixed(3)+' in/hr':'Unavailable';
+    const compare=document.querySelector('#airport-comparison');
+    compare.textContent=comparisons.map((c,j)=>{const q=c.points.find(q=>q.timestamp===p.timestamp);return (j?'Dashed ':'Solid ')+c.model.name+' (init '+time(c.model.model_run)+'): '+(q?[q.temp.toFixed(1)+' F',q.wind.toFixed(1)+' kt',q.rate.toFixed(3)+' in/hr'].join(' / '):'No sample at this valid time');}).join(' | ');
     const detail=document.querySelector('#airport-svg-readout');if(detail)detail.textContent=label+'   |   '+document.querySelector('#airport-temp').textContent+'   |   '+document.querySelector('#airport-wind').textContent+' sustained   |   '+document.querySelector('#airport-precip').textContent;
     const line=document.querySelector('#airport-crosshair');line?.setAttribute('x1',x(selectedIndex));line?.setAttribute('x2',x(selectedIndex));
   }
@@ -147,7 +164,7 @@
   function save(blob,extension){const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download='CHWeather_'+catalog[selectedAirport].id+'_'+activeModel.name+'_'+activeModel.model_run.replace(/[:\-]/g,'').replace('T','_')+'.'+extension;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);}
   document.querySelector('#airport-csv').addEventListener('click',()=>{
     const quote=value=>'"'+String(value).replaceAll('"','""')+'"';
-    const rows=[['airport','model','model_run_utc','valid_utc','forecast_hour','temperature_f','wind10_kt','precipitation_rate_in_hr'],...series.map(p=>[catalog[selectedAirport].id,activeModel.name,activeModel.model_run,p.valid,p.hour,...[p.temp,p.wind,p.rate].map(v=>Number.isFinite(v)?v:'')])];
+    const rows=[['airport','model','model_run_utc','valid_utc','forecast_hour','temperature_f','wind10_kt','precipitation_rate_in_hr'],...comparisons.flatMap(c=>c.points.map(p=>[catalog[selectedAirport].id,c.model.name,c.model.model_run,p.valid,p.hour,...[p.temp,p.wind,p.rate].map(v=>Number.isFinite(v)?v:'')]))];
     save(new Blob([rows.map(row=>row.map(quote).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),'csv');
   });
   document.querySelector('#airport-png').addEventListener('click',async()=>{

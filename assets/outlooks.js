@@ -1,6 +1,10 @@
+if(location.hash==='#foliage'&&/\/outlooks\/(?:index\.html)?$/.test(location.pathname)){
+  document.documentElement.style.visibility='hidden';
+  location.replace(new URL('fall.html',document.baseURI));
+}
 const browserSection = document.querySelector('[data-weather-manifest]');
 if (browserSection) {
-  let type='weather', region='nc', manifest;
+  let type=browserSection.dataset.outlookDefault||'weather', region='nc', manifest;
   const panel=browserSection.querySelector('.outlook-products');
   const status=browserSection.querySelector('.outlook-status');
   const explanations={
@@ -74,7 +78,7 @@ if (browserSection) {
       if(!Array.isArray(manifest.products))throw new Error('invalid');
       const initial=location.hash.slice(1);
       const button=browserSection.querySelector(`[data-outlook-type="${Object.keys(explanations).includes(initial)?initial:'weather'}"]`);
-      if(Object.keys(explanations).includes(initial))button.click();
+      if(button&&Object.keys(explanations).includes(initial))button.click();
       else renderProducts();
     } catch {status.textContent='Forecast metadata is unavailable. Please use the official source links below.';}
   })();

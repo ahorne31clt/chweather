@@ -1,6 +1,6 @@
 (() => {
   const $=id=>document.getElementById('mos-'+id);
-  const families={MAV:{label:'GFS / MAV',header:'GFS MOS',stale:18,note:'Short-range GFS MOS. Use the HR clock-hour row with DT dates; all bulletin times are UTC.'},MEX:{label:'Extended GFS / MEX',header:'GFSX MOS',stale:30,note:'Extended GFS MOS. FHR gives hours after initialization, not UTC clock hours. WND is maximum sustained wind during its specified interval; QPF and other coded rows require the MEX reference.'},LAV:{label:'GFS LAMP / LAV',header:'GFS LAMP',stale:3,note:'Short-range LAMP guidance. Use the UTC clock-hour row and the bulletin header date. LAMP and MOS products can have different update times and forecast intervals.'}};
+  const families={NBH:{label:'NBM / NBH',header:'NBM NBH',stale:18,note:'National Blend of Models hourly guidance. Read UTC dates and FHR lead hours directly from the bulletin. NBM is blended guidance; its codes differ from traditional MOS.'},NBS:{label:'NBM / NBS',header:'NBM NBS',stale:18,note:'National Blend of Models short-range guidance. Read UTC dates and FHR lead hours directly from the bulletin. NBM is blended guidance; its codes differ from traditional MOS.'},NBE:{label:'NBM / NBE',header:'NBM NBE',stale:18,note:'National Blend of Models extended guidance. Read UTC dates and FHR lead hours directly from the bulletin. NBM is blended guidance; its codes differ from traditional MOS.'},MAV:{label:'GFS / MAV',header:'GFS MOS',stale:18,note:'Short-range GFS MOS. Use the HR clock-hour row with DT dates; all bulletin times are UTC.'},MEX:{label:'Extended GFS / MEX',header:'GFSX MOS',stale:30,note:'Extended GFS MOS. FHR gives hours after initialization, not UTC clock hours. WND is maximum sustained wind during its specified interval; QPF and other coded rows require the MEX reference.'},LAV:{label:'GFS LAMP / LAV',header:'GFS LAMP',stale:3,note:'Short-range LAMP guidance. Use the UTC clock-hour row and the bulletin header date. LAMP and MOS products can have different update times and forecast intervals.'}};
   let current,sequence=0,controller,catalogPromise,selected='KCLT';
   function status(value,state='ok'){$('status').textContent=value;$('status').dataset.state=state;}
   function catalog(){
@@ -10,8 +10,8 @@
   function parseBulletin(raw,station,product){
     if(raw.length>100000||/<html|<!doctype/i.test(raw))throw new Error('The provider did not return a valid MOS bulletin.');
     const clean=raw.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g,'').replace(/\r\n?/g,'\n').trim();
-    const headers=[...clean.matchAll(/^([A-Z0-9]{3,4})\s+(GFSX? MOS|NAM MOS|GFS LAMP)\s+GUIDANCE\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{2})(\d{2})\s+UTC/gm)];
-    const header=headers.find(h=>(h[1]===station||h[1]===station.slice(1))&&h[2]===families[product].header);
+    const headers=[...clean.matchAll(/^([A-Z0-9]{3,4})\s+(GFSX? MOS|GFS LAMP|NBM\s+NB[HSE])\s+GUIDANCE\s+(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{2})(\d{2})\s+UTC/gm)];
+    const header=headers.find(h=>(h[1]===station||h[1]===station.slice(1))&&h[2].replace(/\s+/g,' ')===families[product].header);
     if(headers.length!==1||!header)throw new Error(`No matching ${product} bulletin is available for ${station}. The airport may not have this guidance family.`);
     const month=Number(header[3]),day=Number(header[4]),year=Number(header[5]),hour=Number(header[6]),minute=Number(header[7]);
     const runtime=new Date(Date.UTC(year,month-1,day,hour,minute));
