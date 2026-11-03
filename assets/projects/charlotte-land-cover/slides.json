@@ -1,0 +1,287 @@
+{
+  "slide_count": 56,
+  "pdf_filename": "slides-web.pdf",
+  "pdf_bytes": 22089023,
+  "slides": [
+    {
+      "number": 1,
+      "image_filename": "slide-01.webp",
+      "caption": "Christopher Horne and Jenna Bess / Sentinel-2 Geospatial Data 2018-2025"
+    },
+    {
+      "number": 2,
+      "image_filename": "slide-02.webp",
+      "caption": "INTRODUCTION"
+    },
+    {
+      "number": 3,
+      "image_filename": "slide-03.webp",
+      "caption": "Why Assess Land Cover and Urbanization in Charlotte? / ●"
+    },
+    {
+      "number": 4,
+      "image_filename": "slide-04.webp",
+      "caption": "Why Sentinel-2? / ●"
+    },
+    {
+      "number": 5,
+      "image_filename": "slide-05.webp",
+      "caption": "Project Goals / ●"
+    },
+    {
+      "number": 6,
+      "image_filename": "slide-06.webp",
+      "caption": "Challenges / ●"
+    },
+    {
+      "number": 7,
+      "image_filename": "slide-07.webp",
+      "caption": "METHODS"
+    },
+    {
+      "number": 8,
+      "image_filename": "slide-08.webp",
+      "caption": "Study Area & Data / ●"
+    },
+    {
+      "number": 9,
+      "image_filename": "slide-09.webp",
+      "caption": "Preprocessing and Data Retrieval / ●"
+    },
+    {
+      "number": 10,
+      "image_filename": "slide-10.webp",
+      "caption": "Spectral Composites / ●"
+    },
+    {
+      "number": 11,
+      "image_filename": "slide-11.webp",
+      "caption": "PCA and Texture Analysis / ●"
+    },
+    {
+      "number": 12,
+      "image_filename": "slide-12.webp",
+      "caption": "NDVI, NDMI, and NDBI / ●"
+    },
+    {
+      "number": 13,
+      "image_filename": "slide-13.webp",
+      "caption": "Supervised Classification and Change Detection / ●"
+    },
+    {
+      "number": 14,
+      "image_filename": "slide-14.webp",
+      "caption": "RESULTS"
+    },
+    {
+      "number": 15,
+      "image_filename": "slide-15.webp",
+      "caption": "Overview of Products / RGB True Color"
+    },
+    {
+      "number": 16,
+      "image_filename": "slide-16.webp",
+      "caption": "RGB / Composite"
+    },
+    {
+      "number": 17,
+      "image_filename": "slide-17.webp",
+      "caption": "RGB / Composite"
+    },
+    {
+      "number": 18,
+      "image_filename": "slide-18.webp",
+      "caption": "RGB Composite Charlotte NC 2018 vs 2025 / 2018"
+    },
+    {
+      "number": 19,
+      "image_filename": "slide-19.webp",
+      "caption": "PCA / Charlotte NC"
+    },
+    {
+      "number": 20,
+      "image_filename": "slide-20.webp",
+      "caption": "PCA / Charlotte NC"
+    },
+    {
+      "number": 21,
+      "image_filename": "slide-21.webp",
+      "caption": "Principal Component Analysis (PCA) Charlotte NC 2018 vs 2025 / 2018"
+    },
+    {
+      "number": 22,
+      "image_filename": "slide-22.webp",
+      "caption": "Normalized Difference Vegetation Index 2018 vs 2025 / 2018"
+    },
+    {
+      "number": 23,
+      "image_filename": "slide-23.webp",
+      "caption": "Normalized Difference Vegetation Index Time Series / Normalized Difference Vegetation Index (NDVI) highlighting vegetation cover across year"
+    },
+    {
+      "number": 24,
+      "image_filename": "slide-24.webp",
+      "caption": "Normalized Difference Moisture Index 2018 vs 2025 / 2018"
+    },
+    {
+      "number": 25,
+      "image_filename": "slide-25.webp",
+      "caption": "Normalized Difference Built-Up Index 2018 vs 2025 / 2018"
+    },
+    {
+      "number": 26,
+      "image_filename": "slide-26.webp",
+      "caption": "SWIR Urbanization False Color Composite 2018 vs 2025 / 2018"
+    },
+    {
+      "number": 27,
+      "image_filename": "slide-27.webp",
+      "caption": "Standard Color Infrared False Color Composite 2018 vs 2025 / 2018"
+    },
+    {
+      "number": 28,
+      "image_filename": "slide-28.webp",
+      "caption": "Geology and Soil False Color Composite 2018 vs 2025 / 2018"
+    },
+    {
+      "number": 29,
+      "image_filename": "slide-29.webp",
+      "caption": "Regions of / Interest for"
+    },
+    {
+      "number": 30,
+      "image_filename": "slide-30.webp",
+      "caption": "Regions of / Interest for"
+    },
+    {
+      "number": 31,
+      "image_filename": "slide-31.webp",
+      "caption": "MLC / Charlotte NC"
+    },
+    {
+      "number": 32,
+      "image_filename": "slide-32.webp",
+      "caption": "MLC / Charlotte NC"
+    },
+    {
+      "number": 33,
+      "image_filename": "slide-33.webp",
+      "caption": "Maximum Likelihood Classification Results 2018 vs 2025 / 2018"
+    },
+    {
+      "number": 34,
+      "image_filename": "slide-34.webp",
+      "caption": "Change / Detection"
+    },
+    {
+      "number": 35,
+      "image_filename": "slide-35.webp",
+      "caption": "Change / Detection"
+    },
+    {
+      "number": 36,
+      "image_filename": "slide-36.webp",
+      "caption": "Change / Detection"
+    },
+    {
+      "number": 37,
+      "image_filename": "slide-37.webp",
+      "caption": "Change / Detection"
+    },
+    {
+      "number": 38,
+      "image_filename": "slide-38.webp",
+      "caption": "Change / Detection"
+    },
+    {
+      "number": 39,
+      "image_filename": "slide-39.webp",
+      "caption": "Change / Detection"
+    },
+    {
+      "number": 40,
+      "image_filename": "slide-40.webp",
+      "caption": "ANALYSIS"
+    },
+    {
+      "number": 41,
+      "image_filename": "slide-41.webp",
+      "caption": "NDVI and Vegetation Decline / 2018"
+    },
+    {
+      "number": 42,
+      "image_filename": "slide-42.webp",
+      "caption": "Moisture and Soil Disturbance [Normalized Difference Moisture Index] / 2018"
+    },
+    {
+      "number": 43,
+      "image_filename": "slide-43.webp",
+      "caption": "Urban Expansion [Normalized Difference Built-Up Index] / 2018"
+    },
+    {
+      "number": 44,
+      "image_filename": "slide-44.webp",
+      "caption": "Principal Component Analysis Interpretation / ●"
+    },
+    {
+      "number": 45,
+      "image_filename": "slide-45.webp",
+      "caption": "DISCUSSION"
+    },
+    {
+      "number": 46,
+      "image_filename": "slide-46.webp",
+      "caption": "Maximum Likelihood Classification Results / ●"
+    },
+    {
+      "number": 47,
+      "image_filename": "slide-47.webp",
+      "caption": "MLC/ Change Detection Data Quality, Limitations and Correction Methods / Raw Pixel Change"
+    },
+    {
+      "number": 48,
+      "image_filename": "slide-48.webp",
+      "caption": "MLC vs National Land Cover Database Comparison / NLCD"
+    },
+    {
+      "number": 49,
+      "image_filename": "slide-49.webp",
+      "caption": "MLC Conclusion and Key Findings / ●"
+    },
+    {
+      "number": 50,
+      "image_filename": "slide-50.webp",
+      "caption": "● / As seen in previous slides, Charlotte has experienced rapid urban development"
+    },
+    {
+      "number": 51,
+      "image_filename": "slide-51.webp",
+      "caption": "● / As observed in the MLC images, between 2018 and 2025 Charlotte saw a large decrease in vegetated"
+    },
+    {
+      "number": 52,
+      "image_filename": "slide-52.webp",
+      "caption": "● / Charlotte is one on the fastest growing cities with an annual growth rate of around 1.8%. As population"
+    },
+    {
+      "number": 53,
+      "image_filename": "slide-53.webp",
+      "caption": "CONCLUSION"
+    },
+    {
+      "number": 54,
+      "image_filename": "slide-54.webp",
+      "caption": "● / When examining satellite data of Charlotte, NC between the years of 2018 and 2025 it is"
+    },
+    {
+      "number": 55,
+      "image_filename": "slide-55.webp",
+      "caption": "Lind, M. (2025, March 21). Rebuilding Charlotte’s Canopy - TreesCharlotte. TreesCharlotte. / https://treescharlotte.org/news/rebuilding-char"
+    },
+    {
+      "number": 56,
+      "image_filename": "slide-56.webp",
+      "caption": "QUESTIONS?"
+    }
+  ]
+}
