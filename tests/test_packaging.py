@@ -54,7 +54,7 @@ def test_sunset_lookup_binary_is_validated_and_cname_is_preserved(tmp_path,monke
 def test_workflow_generates_every_packaged_product_before_publishing():
     workflow=(Path(__file__).resolve().parents[1]/'.github/workflows/sunset.yml').read_text()
     products=re.search(r'product: \[([^\]]+)\]',workflow).group(1)
-    assert {p.strip() for p in products.split(',')}==set(export.PRODUCTS)-{'models'}
+    assert {p.strip() for p in products.split(',')}==set(export.PRODUCTS)-{'models','seasonal'}
     assert 'needs: verify' in workflow
     assert 'fail-fast: false' in workflow
     assert '--check --product "$PRODUCT"' in workflow
@@ -64,9 +64,26 @@ def test_workflow_generates_every_packaged_product_before_publishing():
     assert '--only-binary=:all:' in workflow
     assert 'sudo timeout 120 apt-get' in workflow
     models=(Path(__file__).resolve().parents[1]/'.github/workflows/models.yml').read_text()
-    assert 'model: [gfs, hrrr, nam]' in models
+    assert 'model: [gfs, hrrr]' in models
     assert 'python -m models --model "$MODEL"' in models
     publish=(Path(__file__).resolve().parents[1]/'.github/workflows/publish.yml').read_text()
-    assert 'workflows: [Daily weather and sunset outlooks, Scheduled weather models]' in publish
+    assert 'workflows: [Daily weather and sunset outlooks, Scheduled weather models, Seasonal climate outlooks]' in publish
     assert 'scripts.collect_publication' in publish
     assert 'workflow_run.conclusion ==' not in publish
+
+
+def test_large_project_pdfs_stay_in_portable_zip_but_not_pages(tmp_path,monkeypatch):
+    from zipfile import ZipFile
+    monkeypatch.setattr(export,'ROOT',tmp_path)
+    public=tmp_path/'index.html'
+    public.write_text('site')
+    for name in export.REPOSITORY_DOWNLOADS:
+        path=tmp_path/name
+        path.parent.mkdir(parents=True,exist_ok=True)
+        path.write_bytes(b'pdf fixture')
+    assert not set(tmp_path/name for name in export.REPOSITORY_DOWNLOADS)&set(export.static_files())
+    monkeypatch.setattr(export,'checked_files',lambda:[public])
+    output=tmp_path/'portable.zip'
+    export.package(output,zipped=True)
+    with ZipFile(output) as archive:
+        assert set(export.REPOSITORY_DOWNLOADS)<=set(archive.namelist())

@@ -24,11 +24,11 @@ def part(root,model):
 
 
 def test_merge_keeps_all_models_and_both_matching_airport_runs(tmp_path):
-    for model in ('gfs','hrrr','nam'):part(tmp_path/'parts',model)
+    for model in ('gfs','hrrr'):part(tmp_path/'parts',model)
     out=tmp_path/'merged';out.mkdir();(out/'gfs-0.png').write_bytes(b'old checkout image')
     result=merge.merge(tmp_path/'parts',out)
-    assert [m['id'] for m in result['models']]==['gfs','hrrr','nam']
-    assert [len(m['frames']) for m in result['models']]==[129,49,29]
+    assert [m['id'] for m in result['models']]==['gfs','hrrr']
+    assert [len(m['frames']) for m in result['models']]==[129,49]
     assert (out/'gfs-0.png').read_bytes()==b'image'
     airport=json.loads((out/'airports/latest.json').read_text())
     assert [m['id'] for m in airport['models']]==['gfs','hrrr']
@@ -77,11 +77,10 @@ def test_independent_artifacts_keep_valid_jobs_even_if_other_jobs_failed(monkeyp
     assert collect.artifact_candidates('owner/repo','model-gfs','fake')[0]['id']==99
 
 
-def test_nam_only_still_publishes_when_gfs_and_hrrr_have_no_successful_run(tmp_path):
+def test_removed_nam_artifact_is_not_published(tmp_path):
     part(tmp_path/'parts','nam')
-    result=merge.merge(tmp_path/'parts',tmp_path/'out',allow_missing=True)
-    assert [m['id'] for m in result['models'] if m['status']=='available']==['nam']
-    assert json.loads((tmp_path/'out/airports/latest.json').read_text())['models']==[]
+    with pytest.raises(ValueError,match='No completed model part'):
+        merge.merge(tmp_path/'parts',tmp_path/'out',allow_missing=True)
 
 
 def test_publisher_keeps_other_products_when_one_product_raises(tmp_path,monkeypatch):

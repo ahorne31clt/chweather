@@ -16,10 +16,11 @@ def test_single_model_job_never_downloads_other_models(tmp_path,monkeypatch):
     assert calls and set(calls)=={'gfs'}
 
 
-def test_nam_cli_does_not_attempt_unsupported_airport_generation(monkeypatch):
+def test_removed_nam_cli_is_rejected_before_generation(monkeypatch):
     selected=[]
     monkeypatch.setattr('sys.argv',['models','--model','nam'])
     monkeypatch.setattr(generate,'run',lambda args:selected.append(args.model))
     def forbidden():raise AssertionError('NAM must not invoke airport generation')
     monkeypatch.setattr(airports,'generate',forbidden)
-    assert generate.main()==0 and selected==['nam']
+    with pytest.raises(SystemExit):generate.main()
+    assert selected==[]
