@@ -1,0 +1,72 @@
+{
+  "slide_count": 13,
+  "pdf_filename": "slides.pdf",
+  "pdf_bytes": 9296551,
+  "slides": [
+    {
+      "number": 1,
+      "image_filename": "slide-01.webp",
+      "caption": "METR Computer / Applications"
+    },
+    {
+      "number": 2,
+      "image_filename": "slide-02.webp",
+      "caption": "INTRODUCTION / ★"
+    },
+    {
+      "number": 3,
+      "image_filename": "slide-03.webp",
+      "caption": "SELECTED EVENTS / ★"
+    },
+    {
+      "number": 4,
+      "image_filename": "slide-04.webp",
+      "caption": "SELECTED DATASETS / ★"
+    },
+    {
+      "number": 5,
+      "image_filename": "slide-05.webp",
+      "caption": "METHODS / VARIOUS WIND SHEAR"
+    },
+    {
+      "number": 6,
+      "image_filename": "slide-06.webp",
+      "caption": "METHODS / MID-LEVEL LAPSE"
+    },
+    {
+      "number": 7,
+      "image_filename": "slide-07.webp",
+      "caption": "ANALYSIS / ★"
+    },
+    {
+      "number": 8,
+      "image_filename": "slide-08.webp",
+      "caption": "ANALYSIS / ★"
+    },
+    {
+      "number": 9,
+      "image_filename": "slide-09.webp",
+      "caption": "ANALYSIS / ★"
+    },
+    {
+      "number": 10,
+      "image_filename": "slide-10.webp",
+      "caption": "ANALYSIS / ★"
+    },
+    {
+      "number": 11,
+      "image_filename": "slide-11.webp",
+      "caption": "ANALYSIS / ★"
+    },
+    {
+      "number": 12,
+      "image_filename": "slide-12.webp",
+      "caption": "ANALYSIS / ★"
+    },
+    {
+      "number": 13,
+      "image_filename": "slide-13.webp",
+      "caption": "SUMMARY / ★"
+    }
+  ]
+}
