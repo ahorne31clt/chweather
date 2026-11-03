@@ -68,7 +68,7 @@ def package():
 
     optics=['optics/index.html','assets/optics.js','assets/optics.css','assets/navigation.js',
         'outlooks/index.html','.github/workflows/sunset.yml','scripts/package_site.py',
-        'scripts/package_github.py','tests/test_optics.py','tests/test_optics_context.py','docs/SOLAR-OPTICS.md','README.md']
+        'scripts/package_github.py','tests/test_optics.py','tests/test_optics_context.py','tests/test_contrails.py','docs/CONTRAIL-ENVIRONMENT.md','docs/SOLAR-OPTICS.md','README.md']
     optics.extend(p.relative_to(ROOT).as_posix() for p in (ROOT/'optics').glob('*.py'))
     with ZipFile(out.parent/'ch-weather-solar-optics-update.zip','w',ZIP_DEFLATED) as archive:
         for name in sorted(set(optics)):archive.write(ROOT/name,name)
