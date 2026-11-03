@@ -1,0 +1,20 @@
+Combined update: NBM bulletins, GFS/HRRR airport meteogram comparisons, and separate Fall Color page.
+
+Compared with GitHub main commit 255ae7409294efb04381b130c521a91009d40db1.
+
+Extract the ZIP first. Upload its folders and files into the repository root, preserving paths and replacing existing files. Do not upload the ZIP itself as the website.
+
+After committing run Publish latest weather website. No model or outlook generation is required for these page changes.
+
+Files:
+REPLACE assets/meteogram.js
+REPLACE assets/models.css
+REPLACE assets/mos.js
+REPLACE assets/navigation.js
+REPLACE assets/outlooks.js
+ADD docs/NBM-METEOGRAM-UPDATE.md
+REPLACE index.html
+REPLACE models/index.html
+REPLACE mos/index.html
+ADD outlooks/fall.html
+REPLACE outlooks/index.html
