@@ -1,4 +1,4 @@
-"""Validate and combine independently generated GFS, HRRR and NAM bundles."""
+"""Validate and combine independently generated GFS and HRRR bundles."""
 import argparse
 from datetime import datetime,timezone
 import json
@@ -43,7 +43,7 @@ def check_part(folder,model):
 def merge(parts,output,allow_missing=False):
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     manifests=[];airports=[];catalog_hash=None;copied=set();missing=[];airport_notes=[]
-    for model in ('gfs','hrrr','nam'):
+    for model in ('gfs','hrrr'):
         folder=Path(parts)/f'model-{model}'/'generated/models'
         if not (folder/'latest.json').is_file() and allow_missing:
             missing.append(dict(id=model,name=model.upper(),status='unavailable',message='No validated completed run is available yet.'))
@@ -90,7 +90,7 @@ if __name__=='__main__':
     parser.add_argument('--parts',default='.model-parts')
     parser.add_argument('--output',default='generated/models')
     parser.add_argument('--check-part')
-    parser.add_argument('--model',choices=['gfs','hrrr','nam'])
+    parser.add_argument('--model',choices=['gfs','hrrr'])
     parser.add_argument('--stage',help='Copy only validated referenced assets to this artifact root')
     parser.add_argument('--allow-missing',action='store_true')
     args=parser.parse_args()

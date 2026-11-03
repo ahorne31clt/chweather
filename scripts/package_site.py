@@ -7,8 +7,9 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 ROOT=Path(__file__).resolve().parent.parent
 SPECIALTIES=('daily','outdoor','stargazing','frost','snow','ice','comfort','confidence')
-PRODUCTS=('sunset','weather','tropical','centers','enso','analysis','ensembles','models')+tuple('specialty-'+p for p in SPECIALTIES)
-PAGES=('portfolio','sunset','outlooks','models','tropical','satellite','alerts','analysis','mos','ensembles','enso','radar')
+PRODUCTS=('sunset','weather','tropical','centers','enso','analysis','ensembles','models','seasonal','optics')+tuple('specialty-'+p for p in SPECIALTIES)
+PAGES=('portfolio','sunset','outlooks','models','tropical','satellite','alerts','analysis','mos','ensembles','enso','radar','seasonal','optics')
+REPOSITORY_DOWNLOADS=('assets/projects/tornado-shelter-access/map.pdf','assets/projects/norman-tornado-environments/slides.pdf','assets/projects/charlotte-land-cover/slides-web.pdf')
 
 
 def static_files():
@@ -17,7 +18,7 @@ def static_files():
     for directory in PAGES:
         yield from sorted((ROOT/directory).glob('*.html'))
     yield from sorted((ROOT/'docs').glob('*.md'))
-    yield from sorted(p for p in (ROOT/'assets').rglob('*') if p.is_file())
+    yield from sorted(p for p in (ROOT/'assets').rglob('*') if p.is_file() and p.relative_to(ROOT).as_posix() not in REPOSITORY_DOWNLOADS)
     yield ROOT/'output/pdf/christopher-horne-resume-placeholder.pdf'
     if (ROOT/'CNAME').is_file():
         yield ROOT/'CNAME'
@@ -99,6 +100,7 @@ def package(output,zipped=False):
         raise ValueError('Unsafe export target')
     files=checked_files()
     if zipped:
+        files+= [ROOT/name for name in REPOSITORY_DOWNLOADS if (ROOT/name).is_file()]
         output.parent.mkdir(parents=True,exist_ok=True)
         with ZipFile(output,'w',ZIP_DEFLATED) as archive:
             for path in files:

@@ -157,7 +157,7 @@ def main():
             if available:successes+=1
             else:unavailable_product(ROOT,product)
         models=[]
-        for model in ('gfs','hrrr','nam'):
+        for model in ('gfs','hrrr'):
             try:
                 if restore_model(repository,model,token,temporary):models.append(model)
             except Exception as error:print(f'{model} update unavailable: {error}')
