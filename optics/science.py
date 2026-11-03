@@ -4,6 +4,7 @@ from scipy.ndimage import map_coordinates
 from specialty.science import solar_altitude
 
 PHENOMENA={
+ 'contrail':('Persistent contrail environment','If a suitable aircraft crosses a qualifying cold, ice-supersaturated layer, its contrail could persist and spread into cirrus. This does not predict flights, cloud lifetime, halos or sundogs.'),
  'halo':('22-degree halo','Thin high ice cloud with the Sun visible; random crystal orientations can form a ring.'),
  'sundog':('Sundogs','Plate crystals preferentially oriented horizontally; strongest viewing usually with a low Sun.'),
  'zenithal':('Circumzenithal arc','Horizontally oriented plate crystals; Sun must be below approximately 32 degrees.'),
@@ -56,4 +57,7 @@ def score(fields,time,lat,lon):
     wet=[sample(rain,lat,lon,az+np.pi+angle,d) for d in (10,25,40) for angle in (-.35,0,.35)]
     drops=np.max(np.stack(wet),axis=0)
     result['rainbow']=np.where(daylight&(alt<42),100*(1-np.exp(-drops/.5))*visible,0)
+    if 'q200' in fields:
+        from .contrails import diagnose
+        result['contrail']=diagnose(fields)['category']
     return {k:np.clip(v,0,100) for k,v in result.items()},alt

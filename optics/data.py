@@ -20,12 +20,14 @@ def read(path,run,hour):
             try:
                 short=ec.codes_get(g,'shortName');level=ec.codes_get(g,'level');typ=ec.codes_get(g,'typeOfLevel')
                 key=mapping.get(short)
-                if typ=='isobaricInhPa' and level in (300,400,500):
-                    key={'t':'temp','r':'rh','icmr':'ice','ciwmr':'ice'}.get(short)
+                if typ=='isobaricInhPa' and level in (200,250,300,350,400,500):
+                    key={'t':'temp','r':'rh','icmr':'ice','ciwmr':'ice','q':'q'}.get(short)
+                    if key in ('rh','ice') and level not in (300,400,500):key=None
+                    if key=='q' and level not in (200,250,300,350):key=None
                     if key:key+=str(level)
                 if key is None or ec.codes_get(g,'stepType')!='instant':continue
                 if (ec.codes_get(g,'dataDate'),ec.codes_get(g,'dataTime'),ec.codes_get(g,'endStep'))!=(int(run.strftime('%Y%m%d')),run.hour*100,hour):raise ValueError('Optics GRIB timing mismatch')
-                unit=ec.codes_get(g,'units');expected='K' if key.startswith('temp') else '%' if key.startswith('rh') or key in ('low','middle','high') else 'kg kg**-1' if key.startswith('ice') else 'm' if key=='visibility' else 'kg m**-2 s**-1' if key=='rate' else '(Code table 4.222)'
+                unit=ec.codes_get(g,'units');expected='K' if key.startswith('temp') else '%' if key.startswith('rh') or key in ('low','middle','high') else 'kg kg**-1' if key.startswith(('ice','q')) else 'm' if key=='visibility' else 'kg m**-2 s**-1' if key=='rate' else '(Code table 4.222)'
                 if key=='rain':
                     if unit not in ('(Code table 4.222)','Proportion','Numeric','(Code table 4.201)'):raise ValueError('Unexpected rain flag units: '+unit)
                 elif unit!=expected:raise ValueError('Unexpected '+key+' units: '+unit)
@@ -42,19 +44,21 @@ def read(path,run,hour):
                 if key in ('low','middle','high') or key.startswith('rh'):
                     if values.min()<0 or values.max()>100.01:raise ValueError('Invalid percentage')
                 if key.startswith('temp') and (values.min()<150 or values.max()>340):raise ValueError('Invalid temperature')
+                if key.startswith('q') and (values.min()<0 or values.max()>.1):raise ValueError('Invalid specific humidity')
                 if (key.startswith('ice') or key in ('rate','rain','visibility')) and values.min()<0:raise ValueError('Negative physical input')
                 fields[key]=values
             finally:ec.codes_release(g)
     required=set(mapping.values())|{k+str(p) for k in ('temp','rh','ice') for p in (300,400,500)}
+    required|={'q'+str(p) for p in (200,250,300,350)}|{'temp'+str(p) for p in (200,250,350)}
     if fields.keys()!=required:raise ValueError('Missing optics fields: '+str(required-fields.keys()))
     return fields,axes
 
 
 def fetch(http,cache,run,hour):
     query=dict(dir=f'/gfs.{run:%Y%m%d}/{run:%H}/atmos',file=f'gfs.t{run:%H}z.pgrb2.0p25.f{hour:03d}',subregion='',leftlon=228,rightlon=298,bottomlat=20,toplat=54)
-    query.update({f'var_{k}':'on' for k in ('LCDC','MCDC','HCDC','VIS','PRATE','CRAIN','TMP','RH','ICMR')})
-    query.update({f'lev_{k}':'on' for k in ('low_cloud_layer','middle_cloud_layer','high_cloud_layer','surface','300_mb','400_mb','500_mb')})
-    path=Path(cache)/f'gfs-{run:%Y%m%d%H}-{hour:03d}.grib2'
+    query.update({f'var_{k}':'on' for k in ('LCDC','MCDC','HCDC','VIS','PRATE','CRAIN','TMP','RH','ICMR','SPFH')})
+    query.update({f'lev_{k}':'on' for k in ('low_cloud_layer','middle_cloud_layer','high_cloud_layer','surface','200_mb','250_mb','300_mb','350_mb','400_mb','500_mb')})
+    path=Path(cache)/f'gfs-{run:%Y%m%d%H}-{hour:03d}-contrail-v3.grib2'
     if not path.exists():download(http,FILTER,path,params=query,maximum=15_000_000)
     import requests
     try:fields,axes=read(path,run,hour)

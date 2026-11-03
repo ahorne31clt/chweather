@@ -14,7 +14,7 @@ ROOT=Path(__file__).resolve().parents[1]
 LOG=logging.getLogger('optics')
 SOURCES=['https://www.weather.gov/arx/why_halos_sundogs_pillars','https://www.weather.gov/fgz/Rainbow',
  'https://my.weather.gov.hk/en/education/weather/clouds/00499-circumhorizontal-arc.html',
- 'https://cloudatlas.wmo.int/en/circumzenithal-arc.html']
+ 'https://cloudatlas.wmo.int/en/circumzenithal-arc.html','https://www.faa.gov/contrails','https://py.contrails.org/api/pycontrails.models.sac.html','https://doi.org/10.1256/qj.04.94']
 
 
 def iso(t):return t.isoformat(timespec='seconds').replace('+00:00','Z')
@@ -59,7 +59,11 @@ def run(now=None):
             refined=refinements[len(altitudes)];usable=np.logical_and.reduce([np.isfinite(v) for v in refined.values()])
             coverage.append(float(usable[land].mean()))
             fields.update({k:np.where(usable,v,fields[k]) for k,v in refined.items()})
-        sampled_inputs.append([{k:round(float(v[i,j]),8 if k.startswith('ice') or k=='rate' else 2) for k,v in fields.items()} for i,j in city_indices])
+        from .contrails import diagnose
+        contrail=diagnose(fields)
+        fields.update(contrail_pressure_hpa=contrail['pressure_hpa'],contrail_rhi_percent=contrail['rhi']*100,
+                      contrail_temperature_c=contrail['temperature_c'])
+        sampled_inputs.append([{k:round(float(v[i,j]),8 if k.startswith(('ice','q')) or k=='rate' else 2) for k,v in fields.items()} for i,j in city_indices])
         scores,altitude=score(fields,valid,lat,lon);altitudes.append(altitude)
         for k,value in scores.items():cubes[k].append(value)
     cubes={k:np.stack(v) for k,v in cubes.items()};altitudes=np.stack(altitudes)
@@ -69,7 +73,12 @@ def run(now=None):
     meta=dict(schema_version=2,model='HRRR cloud refinement + GFS upper air/rain' if refinements is not None else 'NOAA/NCEP GFS 0.25 degree',hrrr=hrrr_meta,model_run=iso(run_time),generated_at_utc=iso(datetime.now(timezone.utc)),
       forecast_valid_date=start.date().isoformat(),valid_start_utc=iso(times[0]),valid_end_utc=iso(times[-1]+timedelta(hours=1)),
       forecast_times_utc=[iso(t) for t in times],native_grid_degrees=.25,input_time_interval_hours=3,geometry_interval_hours=1,
-      score_is_probability=False,algorithm_version='optics-ingredients-v2',source_urls=urls+hrrr_meta.get('source_urls',[]),research_sources=SOURCES,
+      score_is_probability=False,algorithm_version='optics-ingredients-v3',source_urls=urls+hrrr_meta.get('source_urls',[]),research_sources=SOURCES,
+      contrail_method=dict(pressure_levels_hpa=[200,250,300,350],humidity='Ice-relative humidity derived from specific humidity, pressure and Murphy-Koop ice saturation pressure; no inference from ambiguous model RH.',
+          formation='Schmidt-Appleman mixing-line test against liquid saturation; generic Jet-A assumptions.',engine_efficiency=.35,water_emission_index_kg_per_kg=1.25,heat_capacity_j_per_kg_k=1004,fuel_heat_j_per_kg=43e6,
+          categories={'0':'No qualifying sampled formation environment','1':'Formation possible; ambient ice supersaturation absent','2':'Formation criterion met and ice-relative humidity at least 100%'},
+          conditional_on_aircraft=True,uses_airport_proximity=False,uses_flight_traffic=False,
+          limitations='Four coarse pressure surfaces can miss thin supersaturated layers. No humidity-bias correction, engine-specific performance, wake survival, cloud lifetime, advection, crystal habit or halo probability is predicted. Nighttime formation is allowed.'),
       pressure_levels_hpa=[300,400,500],products=[],locations_filename='locations.json',
       limitations=['Unvalidated ingredient index; not an occurrence probability or official NWS forecast.',
        'High cloud fraction is not optical depth. Crystal habit, size, orientation, turbulence and 3-D radiative transfer are unresolved.',
