@@ -38,6 +38,62 @@ def test_spc_never_relabels_unknown_categories():
         validate_spc({'type':'FeatureCollection','features':[feature('NEW-RISK')]},TEXT,1,NOW)
 
 
+def no_thunderstorms_fixture():
+    folder=Path(__file__).parent/'fixtures'
+    return (json.loads((folder/'spc-day3-no-thunderstorms.geojson').read_text()),
+            (folder/'spc-day3-no-thunderstorms.txt').read_text())
+
+
+def test_actual_day3_no_thunderstorms_outlook_is_valid():
+    collection,text=no_thunderstorms_fixture()
+    now=datetime(2026,11,5,12,26,tzinfo=UTC)
+    records,meta=validate_spc(collection,text,3,now)
+    assert records==[]
+    assert meta['no_thunderstorms_forecast'] is True
+    assert meta['issued_at_utc']=='2026-11-05T08:14:00Z'
+    assert meta['valid_start_utc']=='2026-11-07T12:00:00Z'
+    assert meta['valid_end_utc']=='2026-11-08T12:00:00Z'
+    from weather.sources import validate_spc_polygons
+    records,meta=validate_spc_polygons(collection,now)
+    assert records==[] and meta['no_thunderstorms_forecast'] is True
+
+
+@pytest.mark.parametrize('standalone',[False,True])
+@pytest.mark.parametrize('change',['unknown','dn','geometry','mixed','expired','issuance'])
+def test_no_thunderstorms_keeps_validation_strict(standalone,change):
+    from weather.sources import validate_spc_polygons
+    collection,text=no_thunderstorms_fixture()
+    now=datetime(2026,11,5,12,26,tzinfo=UTC)
+    f=collection['features'][0]
+    if change=='unknown':f['properties']['LABEL']='NEW-RISK'
+    elif change=='dn':f['properties']['DN']=2
+    elif change=='geometry':f['geometry']=feature()['geometry']
+    elif change=='mixed':collection['features'].append(json.loads(json.dumps(f)))
+    elif change=='expired':now=datetime(2026,11,9,tzinfo=UTC)
+    elif change=='issuance':
+        if standalone:
+            other=json.loads(json.dumps(f));other['properties']['ISSUE']='202611050813'
+            collection['features'].append(other)
+        else:f['properties']['ISSUE']='202611050813'
+    with pytest.raises(ValueError):
+        if standalone:validate_spc_polygons(collection,now)
+        else:validate_spc(collection,text,3,now)
+
+
+def test_no_thunderstorms_download_succeeds_without_fallback(tmp_path,monkeypatch):
+    import weather.sources as sources
+    collection,text=no_thunderstorms_fixture()
+    calls=[]
+    def fake_download(http,url,path,**kwargs):
+        calls.append(url)
+        path.write_text(json.dumps(collection) if url.endswith('geojson') else text)
+    monkeypatch.setattr(sources,'download',fake_download)
+    records,meta=sources.get_spc(None,tmp_path,3,datetime(2026,11,5,12,26,tzinfo=UTC))
+    assert records==[] and meta['no_thunderstorms_forecast'] is True
+    assert len(calls)==2
+    assert 'discussion_status' not in meta
+
+
 def test_spc_rejects_mixed_issuances():
     with pytest.raises(ValueError,match='different issuances'):
         validate_spc({'type':'FeatureCollection','features':[feature(issue='202610300500')]},TEXT,1,NOW)
