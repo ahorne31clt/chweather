@@ -96,6 +96,8 @@ def render(path,root,product,geo,lat=None,lon=None,values=None,records=None,rast
                           color=WHITE if code in active else SAGE)
             highest=max(active,key=lambda key:list(SPC_CATEGORIES).index(key)) if active else None
             risk='No risk areas outlined.' if highest is None else ('General thunderstorms only.' if highest=='TSTM' else f'Highest severe category: {SPC_CATEGORIES[highest][0]}.')
+            if product.get('no_thunderstorms_forecast'):
+                risk='No thunderstorms forecast.'
             side.text(0,.43,'THIS ISSUANCE',fontsize=10,color=GOLD,weight='bold')
             side.text(0,.39,'\n'.join(textwrap.wrap(risk,34)),fontsize=9,color=WHITE)
             side.text(0,.29,'\n'.join(textwrap.wrap(product['summary'],39)[:10]),fontsize=8,color=SAGE,va='top',linespacing=1.45)

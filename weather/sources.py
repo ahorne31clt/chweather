@@ -46,6 +46,24 @@ SPC_CATEGORIES = {
 }
 
 
+def spc_feature_record(feature, feature_count):
+    """SPC uses one empty DN=0 feature when no thunderstorms are forecast."""
+    prop = feature['properties']
+    label = prop['LABEL']
+    if label == 'No Thunderstorms Forecast':
+        if (type(prop.get('DN')) is not int or prop['DN'] != 0
+                or feature_count != 1
+                or feature.get('geometry') != {'type': 'GeometryCollection', 'geometries': []}):
+            raise ValueError('Invalid SPC no-thunderstorms placeholder')
+        return None
+    if label not in SPC_CATEGORIES:
+        raise ValueError(f'Unknown SPC risk category {label!r}; do not substitute a category')
+    geometry = shape(feature['geometry'])
+    if geometry.is_empty or not geometry.is_valid:
+        raise ValueError('Invalid SPC geometry')
+    return label, geometry
+
+
 def validate_spc(collection, text, day, now):
     if collection.get('type') != 'FeatureCollection' or not isinstance(collection.get('features'), list):
         raise ValueError('Not an SPC FeatureCollection')
@@ -61,19 +79,17 @@ def validate_spc(collection, text, day, now):
     records = []
     for feature in collection['features']:
         prop = feature['properties']
-        if prop['LABEL'] not in SPC_CATEGORIES:
-            raise ValueError('Unknown SPC risk category; do not substitute a category')
         for key, expected in [('ISSUE',issue),('VALID',start),('EXPIRE',end)]:
             actual = datetime.strptime(prop[key], '%Y%m%d%H%M').replace(tzinfo=UTC)
             if actual != expected:
                 raise ValueError('SPC polygons and discussion are from different issuances')
-        geometry = shape(feature['geometry'])
-        if geometry.is_empty or not geometry.is_valid:
-            raise ValueError('Invalid SPC geometry')
-        records.append((prop['LABEL'], geometry))
+        record = spc_feature_record(feature, len(collection['features']))
+        if record is not None:
+            records.append(record)
     summary_match = re.search(r'\.\.\.SUMMARY\.\.\.\s*(.*?)(?:\n\s*\n|\n\.\.\.)', text, re.S)
     summary = ' '.join(summary_match[1].split()) if summary_match else 'See the official SPC discussion for the complete outlook.'
-    return records, dict(issued_at_utc=iso(issue),valid_start_utc=iso(start),valid_end_utc=iso(end),summary=summary)
+    return records, dict(issued_at_utc=iso(issue),valid_start_utc=iso(start),valid_end_utc=iso(end),summary=summary,
+                         no_thunderstorms_forecast=bool(collection['features']) and not records)
 
 
 def validate_spc_polygons(collection, now):
@@ -88,17 +104,14 @@ def validate_spc_polygons(collection, now):
     records=[]
     for feature in collection['features']:
         prop=feature['properties']
-        if prop['LABEL'] not in SPC_CATEGORIES:
-            raise ValueError('Unknown SPC risk category; do not substitute a category')
         if any(prop[key] != properties[key] for key in ('ISSUE','VALID','EXPIRE')):
             raise ValueError('SPC polygon features are from different issuances')
-        geometry=shape(feature['geometry'])
-        if geometry.is_empty or not geometry.is_valid:
-            raise ValueError('Invalid SPC geometry')
-        records.append((prop['LABEL'],geometry))
+        record=spc_feature_record(feature,len(collection['features']))
+        if record is not None:
+            records.append(record)
     return records,dict(issued_at_utc=iso(issue),valid_start_utc=iso(start),valid_end_utc=iso(end),
         summary='Official SPC categorical areas shown. See SPC for the latest discussion.',
-        discussion_status='omitted_issuance_mismatch')
+        discussion_status='omitted_issuance_mismatch',no_thunderstorms_forecast=not records)
 
 
 def get_spc(http, cache, day, now):
