@@ -1,0 +1,28 @@
+ZCZC SPCSWODY3 ALL
+ACUS03 KWNS 050814
+SPC AC 050814
+
+Day 3 Convective Outlook  
+NWS Storm Prediction Center Norman OK
+0214 AM CST Thu Nov 05 2026
+
+Valid 071200Z - 081200Z
+
+...NO THUNDERSTORM AREAS FORECAST...
+
+...SUMMARY...
+Thunderstorms are unlikely on Saturday.
+
+...Synopsis...
+An upper low will move across the northeastern states on Saturday
+with another shortwave aloft diving southeastward across the upper
+MS Valley. This will support cool conditions as high pressure
+settles into the MS/OH Valleys, with offshore winds across the Gulf
+and Atlantic coasts. High pressure will also exist across the Great
+Basin, behind an upper low dropping southeastward into Mexico. As
+such, little if any instability will be present to support
+thunderstorms over land.
+
+..Jewell.. 11/05/2026
+
+$$
