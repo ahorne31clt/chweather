@@ -27,7 +27,8 @@ if(modelStage){
   const probe=new CHModelProbe(modelStage,map,readout);
   function loadReadouts(frame,id){
     const definition=manifest.products?.find(p=>p.id===field.value);
-    smoothing.disabled=['precip','ptype'].includes(field.value);
+    smoothing.disabled=['precip','ptype'].includes(field.value)||!frame.images?.[field.value]?.overlay_filename;
+    smoothing.title=frame.images?.[field.value]?.smoothing_available===false?'This smoothing layer was omitted to fit hosting storage. The forecast graphic and numeric values remain available.':smoothing.disabled?'Display smoothing is unavailable for this published frame. Forecast values and the native graphic remain available.':'Display smoothing; raw model values are unchanged';
     smoothing.value=smoothing.disabled?'off':smoothingPreference;
     probe.load(frame,field.value,definition);
     probe.mode=smoothing.disabled?'off':smoothing.value;
