@@ -1,0 +1,18 @@
+{
+  "commit": "5022492a4a60977ffa3136b28a495f98e4f506d8",
+  "compared": 318,
+  "files": [
+    "assets/models.js",
+    "docs/PUBLISH-SIZE-FIX.md",
+    "docs/SEVERE-WINTER-AND-NEW-MODELS.md",
+    "scripts/model_site_budget.py",
+    "tests/test_model_site_budget.py"
+  ],
+  "sha256": {
+    "assets/models.js": "ad9997900d44a47e4c70f99177aba82febc2e38cf29a78aa6c7425aad78bd487",
+    "docs/PUBLISH-SIZE-FIX.md": "49560aae3a78c7d38039211a6eff9ddd5566b50f347b05221801b3a72a3c84eb",
+    "docs/SEVERE-WINTER-AND-NEW-MODELS.md": "9155a9179d3d0700cd460d06d24c4808e67b867df775e9859765cb761dbc7f02",
+    "scripts/model_site_budget.py": "d7830c83c3692e900f448e70218778ea3ce2e5a63ae295aeef4fd173ae73916a",
+    "tests/test_model_site_budget.py": "81fbc2044889caa5978548640a24ea6eb74fa8ce59044e1e90f0fb2378371f1d"
+  }
+}
