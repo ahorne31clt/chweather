@@ -1,1 +1,1 @@
-"""NOAA GFS/HRRR model-frame generation for the CH Weather viewer."""
+"""Validated model-map generation for the CH Weather viewer."""

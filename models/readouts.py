@@ -16,6 +16,12 @@ def values_for_grid(fields,model=None):
         if product=='wind500' and 'u500' not in fields:continue
         if key in ('humidity2','pressure','vorticity500','cape','temperature2','dewpoint2') and key not in fields:continue
         entries.append((dict(id=key,unit=unit,decimals=digits),scalar_field(fields,product)))
+    from .fields import EXTRA_REQUIREMENTS
+    for product,required in EXTRA_REQUIREMENTS.items():
+        if product=='ptype' or not required<=set(fields):continue
+        from .fields import PRODUCTS
+        entries.append((dict(id=product,unit=PRODUCTS[product]['unit'],decimals=1),scalar_field(fields,product)))
+    if 'diagnosed_type' in fields:entries.append((dict(id='diagnosed_type',unit='',decimals=0),fields['diagnosed_type']))
     if 'height500' in fields:entries.append((dict(id='height500',unit='dam',decimals=1),fields['height500']/10))
     if {'height500','height1000'}<=set(fields):entries.append((dict(id='thickness',unit='dam',decimals=1),(fields['height500']-fields['height1000'])/10))
     if {'rain','snow','freezing_rain','sleet','rate'}<=set(fields):
@@ -30,7 +36,7 @@ def values_for_grid(fields,model=None):
 
 def write_grid(path,ax,fields,x,y,source_crs,projection,sampler):
     ax.apply_aspect();left,bottom,width,height=ax.get_position().bounds
-    xx,yy=np.meshgrid(np.arange(2,2400,4),np.arange(2,1350,4))
+    xx,yy=np.meshgrid(np.arange(4,2400,8),np.arange(4,1350,8))
     xmin,xmax=ax.get_xlim();ymin,ymax=ax.get_ylim()
     fx=(xx/2400-left)/width;fy=(1-yy/1350-bottom)/height
     inside=(fx>=0)&(fx<=1)&(fy>=0)&(fy<=1);specs=[];arrays=[]
@@ -44,7 +50,7 @@ def write_grid(path,ax,fields,x,y,source_crs,projection,sampler):
     target=Path(path).with_name(Path(path).stem.removesuffix('-temp2m')+'.bin.gz')
     values=np.stack(arrays);delta=values.copy();delta[:,:,1:]=values[:,:,1:]-values[:,:,:-1]
     target.write_bytes(gzip.compress(delta.tobytes(),compresslevel=6,mtime=0))
-    return dict(filename=target.name,width=xx.shape[1],height=xx.shape[0],cell_pixels=4,
+    return dict(filename=target.name,width=xx.shape[1],height=xx.shape[0],cell_pixels=8,
         dtype='int32-le',delta_axis='x',missing=-2147483648,encoding='gzip',field_specs=specs,fields=[s['id'] for s in specs],
         map_box_pixels=[left*2400,(1-bottom-height)*1350,width*2400,height*1350],
         method='Nearest native model samples; rounded to documented display precision. Smoothing never changes probe values.')

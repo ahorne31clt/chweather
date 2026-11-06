@@ -17,8 +17,30 @@ PRODUCTS.update({
 })
 
 
-def available_products(model):
-    return [key for key in PRODUCTS if not (model=='nam' and key=='precip')]
+PRODUCTS.update({
+ 'ptype':dict(label='Experimental p-type + pressure',title='PROFILE-DIAGNOSED P-TYPE + PRESSURE',subtitle='EXPERIMENTAL / DRY-BULB PROFILE HEURISTIC / SIMULATED REFLECTIVITY >=5 dBZ / MSLP SOLID + THICKNESS DASHED'),
+})
+for key,label,unit,levels,colors in [
+ ('wetbulb2m','2 m wet-bulb temperature','°F',list(range(-20,105,5)),PRODUCTS['temp2m']['colors']),
+ ('lcl','Surface-parcel LCL estimate','m AGL',list(range(0,4501,250)),PRODUCTS['dewpoint2m']['colors']),
+ ('shear500','10 m to 500 mb vector shear','kt',list(range(0,111,10)),PRODUCTS['wind500']['colors']),
+ ('cin','Surface-based inhibition magnitude','J/kg',[0,10,25,50,75,100,150,200,300,500,750,1000],list(reversed(PRODUCTS['sbcape']['colors']))),
+ ('gust','Model surface wind gust','kt',list(range(0,111,10)),PRODUCTS['wind10']['colors']),
+ ('temp850','850 mb temperature','°C',list(range(-30,36,3)),PRODUCTS['temp2m']['colors']),
+ ('wind850','850 mb wind speed','kt',list(range(0,111,10)),PRODUCTS['wind500']['colors']),
+ ('reflectivity','Simulated composite reflectivity','dBZ',list(range(5,81,5)),PRODUCTS['sbcape']['colors'])]:
+    PRODUCTS[key]=dict(label=label,title=label.upper(),subtitle=unit+' / MODEL GUIDANCE / SEE PARAMETER METHODS',unit=unit,levels=levels,colors=colors)
+
+PRODUCTS['mucape']=dict(PRODUCTS['sbcape'],label='Most-unstable CAPE',title='MOST-UNSTABLE CAPE',subtitle='ECMWF MOST-UNSTABLE PARCEL / J/kg / NOT SURFACE-BASED CAPE')
+PRODUCTS['wetbulb2m']['subtitle']='STULL APPROXIMATION / FAHRENHEIT / VALID INPUT: -20 TO 50 C, 5 TO 99% RH / NOT AN ICING PROBABILITY'
+PRODUCTS['lcl']['subtitle']='APPROX. SURFACE-PARCEL LCL: 125 METERS PER C OF T-TD / NOT AN OBSERVED CLOUD CEILING'
+PRODUCTS['shear500']['subtitle']='VECTOR DIFFERENCE: 500 MB WIND MINUS 10 M WIND / KNOTS / NOT FIXED 0-6 KM SHEAR'
+EXTRA_REQUIREMENTS={'mucape':{'mucape'},'wetbulb2m':{'temperature2','humidity2'},'lcl':{'temperature2','dewpoint2'},'shear500':{'u10','v10','u500','v500'},'cin':{'cin'},'gust':{'gust'},'temp850':{'temperature850'},'wind850':{'u850','v850'},'reflectivity':{'reflectivity'},'ptype':{'diagnosed_type','reflectivity'}}
+
+def available_products(model,fields=None):
+    products=[key for key in PRODUCTS if not (model in ('nam','woofnam') and key=='precip') and not (key=='ptype' and model!='woofnam') and not (key=='reflectivity' and model in ('gfs','ecmwf')) and not (key in ('sbcape','cin','gust') and model=='ecmwf') and not (key=='mucape' and model!='ecmwf')]
+    if fields is not None:products=[key for key in products if EXTRA_REQUIREMENTS.get(key,set())<=set(fields)]
+    return products
 
 
 def parameter_metadata():
@@ -27,7 +49,7 @@ def parameter_metadata():
     result=[]
     for key,config in PRODUCTS.items():
         item=dict(id=key,label=config['label'],description=config['subtitle'])
-        if key=='precip':item['legend']=[dict(label=name,color=color) for name,color in zip(TYPE_NAMES[1:],TYPE_COLORS[1:])]
+        if key in ('precip','ptype'):item['legend']=[dict(label=name,color=color) for name,color in zip(TYPE_NAMES[1:],TYPE_COLORS[1:])]
         else:
             cmap=LinearSegmentedColormap.from_list(key,config['colors'],N=256);norm=BoundaryNorm(config['levels'],cmap.N,extend='both')
             levels=config['levels'];item.update(unit=config['unit'],levels=levels,
@@ -37,9 +59,21 @@ def parameter_metadata():
 
 
 def scalar_field(fields,product):
+    if product=='wetbulb2m':
+        t=fields['temperature2']-273.15;rh=np.clip(fields['humidity2'],0,100)
+        tw=t*np.arctan(.151977*np.sqrt(rh+8.313659))+np.arctan(t+rh)-np.arctan(rh-1.676331)+.00391838*rh**1.5*np.arctan(.023101*rh)-4.686035
+        return np.where(rh>=99.999,t*1.8+32,np.where((t>=-20)&(t<=50)&(rh>=5)&(rh<=99),tw*1.8+32,np.nan))
+    if product=='lcl':return np.maximum(0,125*(fields['temperature2']-fields['dewpoint2']))
+    if product=='shear500':return np.hypot(fields['u500']-fields['u10'],fields['v500']-fields['v10'])*1.94384449244
+    if product=='cin':return np.abs(fields['cin'])
+    if product=='gust':return fields['gust']*1.94384449244
+    if product=='temp850':return fields['temperature850']-273.15
+    if product=='wind850':return np.hypot(fields['u850'],fields['v850'])*1.94384449244
+    if product=='reflectivity':return fields['reflectivity']
     if product=='wind10':return np.hypot(fields['u10'],fields['v10'])*1.94384449244
     if product=='rh2m':return fields['humidity2']
     if product=='mslp':return fields['pressure']/100
+    if product=='mucape':return fields['mucape']
     if product=='sbcape':return fields['cape']
     if product=='temp2m':return (fields['temperature2']-273.15)*1.8+32
     if product=='dewpoint2m':return (fields['dewpoint2']-273.15)*1.8+32

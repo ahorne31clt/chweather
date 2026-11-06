@@ -131,6 +131,9 @@ def render(path,root,model,run,hour,fields,grid,geo,product='precip',overlay_onl
         ax.set_facecolor('#141c19')
         land_artist=ax.add_geometries(geo['countries'],ccrs.PlateCarree(),facecolor='#232a26',edgecolor='#5d6c60',linewidth=.45,zorder=1)
         if product=='precip':kind,rate,rgba=classify(fields)
+        elif product=='ptype':
+            from .winter import profile_colors
+            kind,rgba=profile_colors(fields)
         else:
             scalar=scalar_field(fields,product)
             if product=='vort500':scalar=gaussian_filter(scalar,sigma=5 if model=='hrrr' else 1)
@@ -157,7 +160,7 @@ def render(path,root,model,run,hour,fields,grid,geo,product='precip',overlay_onl
             cx,cy=x,y;pres=gaussian_filter(pressure,sigma=.6);thick=gaussian_filter(thickness,sigma=.6)
             transform=ccrs.PlateCarree()
         contours=[]
-        if product=='precip':
+        if product in ('precip','ptype'):
             cold=ax.contour(cx,cy,thick,levels=np.arange(420,541,6),colors='#8FB3BC',linewidths=.7,linestyles='dashed',transform=transform,zorder=4)
             warm=ax.contour(cx,cy,thick,levels=np.arange(546,637,6),colors=GOLD,linewidths=.7,linestyles='dashed',transform=transform,zorder=4)
             solid=ax.contour(cx,cy,pres,levels=np.arange(872,1085,4),colors=WHITE,linewidths=.9,transform=transform,zorder=5)
@@ -194,46 +197,47 @@ def render(path,root,model,run,hour,fields,grid,geo,product='precip',overlay_onl
                     text=ax.annotate(f'{value:.0f}°',xy=(lon,lat),xycoords=ccrs.PlateCarree()._as_mpl_transform(ax),
                         xytext=(4,-11),textcoords='offset points',ha='left',va='center',color=WHITE,fontsize=10,weight='bold',zorder=9,clip_on=True)
                     text.set_path_effects([effects.withStroke(linewidth=2.8,foreground=BG)])
-        if product=='precip':
+        if product in ('precip','ptype'):
             draw_pressure_centers(ax,pres,cx,cy,transform,projection)
-            if not overlay_only and {'temperature2','dewpoint2'}<=set(fields):lookup=write_readouts(path,ax,fields,x,y,transform,projection)
+            if product=='precip' and not overlay_only and {'temperature2','dewpoint2'}<=set(fields):lookup=write_readouts(path,ax,fields,x,y,transform,projection)
         elif product in ('temp2m','dewpoint2m'):
             draw_dense_values(ax,scalar,x,y,transform,projection,geo['usa'],cities)
-            if not overlay_only and model=='nam' and product=='temp2m':lookup=write_readouts(path,ax,fields,x,y,transform,projection)
+            if not overlay_only and model in ('nam','woofnam','ecmwf') and product=='temp2m':lookup=write_readouts(path,ax,fields,x,y,transform,projection)
         elif product=='wind500':draw_wind_barbs(ax,grid,x,y,fields,projection,transform)
+        elif product=='wind850':draw_wind_barbs(ax,grid,x,y,fields,projection,transform,level='850')
         elif product=='wind10':draw_wind_barbs(ax,grid,x,y,fields,projection,transform,level='10')
         elif product=='mslp':draw_pressure_centers(ax,pres,cx,cy,transform,projection)
         ax.spines['geo'].set_edgecolor('#536657')
         logo=figure.add_axes([.007,.938,.04,.055]);logo.axis('off');logo.imshow(Image.open(root/'assets/ch-weather-logo.png'))
         valid=run+timedelta(hours=hour)
-        figure.text(.055,.967,model.upper()+'  /  '+config['title'],fontsize=14,weight='bold')
+        figure.text(.055,.967,('WOOF-NAM' if model=='woofnam' else model.upper())+'  /  '+config['title'],fontsize=14,weight='bold')
         figure.text(.055,.944,config['subtitle'],fontsize=7.2,color=GOLD)
         figure.text(.99,.968,f'VALID {valid:%a %b %d, %Y  %H:%M} UTC',ha='right',fontsize=10,weight='bold')
-        figure.text(.99,.946,f'INIT {run:%Y-%m-%d %H}Z  /  F{hour:03d}  /  '+{'gfs':'0.25° GFS','hrrr':'3 KM HRRR','nam':'12 KM NAM'}[model],ha='right',fontsize=8,color=SAGE)
+        figure.text(.99,.946,f'INIT {run:%Y-%m-%d %H}Z  /  F{hour:03d}  /  '+{'gfs':'0.25° GFS','hrrr':'3 KM HRRR','nam':'12 KM NAM','woofnam':'12.19 KM WOOF-NAM','rrfs':'3 KM RRFS','ecmwf':'0.25 DEG ECMWF IFS'}[model],ha='right',fontsize=8,color=SAGE)
         figure.add_artist(plt.Line2D([.004,.996],[.934,.934],color=GREEN,lw=1,transform=figure.transFigure))
-        if product=='precip':
-            for i,(name,color) in enumerate(zip(TYPE_NAMES[1:],TYPE_COLORS[1:])):
+        if product in ('precip','ptype'):
+            for i,(name,color) in enumerate(zip((TYPE_NAMES[1:] if product!='ptype' else ['Rain','Snow','Freezing rain','Sleet','Mixed','Uncertain profile']),TYPE_COLORS[1:])):
                 pos=.012+i*.108
                 figure.add_artist(Rectangle((pos,.022),.009,.012,facecolor=color,transform=figure.transFigure))
                 figure.text(pos+.013,.023,name,fontsize=7)
-            figure.text(.99,.027,'RATE SHADING ≥0.1 mm/h · BRIGHTER = HEAVIER',fontsize=7,color=SAGE,ha='right')
+            figure.text(.99,.027,('REFLECTIVITY MASK ≥5 dBZ · NOT RATE OR ACCUMULATION' if product=='ptype' else 'RATE SHADING ≥0.1 mm/h · BRIGHTER = HEAVIER'),fontsize=7,color=SAGE,ha='right')
         else:
             color_axis=figure.add_axes([.1,.031,.61,.012])
             bar=figure.colorbar(ScalarMappable(norm=norm,cmap=cmap),cax=color_axis,orientation='horizontal',extend='both')
             bar.ax.tick_params(labelsize=6.5,length=2,pad=2,color=SAGE,labelcolor=WHITE)
             figure.text(.013,.031,config['unit'],fontsize=8,color=WHITE)
-            context={'temp2m':'2 M ABOVE GROUND','dewpoint2m':'2 M ABOVE GROUND','rh2m':'2 M ABOVE GROUND','wind10':'10 M ABOVE GROUND','mslp':'REDUCED TO SEA LEVEL','sbcape':'SURFACE PARCEL / BUOYANCY'}
+            context={'temp2m':'2 M ABOVE GROUND','dewpoint2m':'2 M ABOVE GROUND','rh2m':'2 M ABOVE GROUND','wind10':'10 M ABOVE GROUND','mslp':'REDUCED TO SEA LEVEL','sbcape':'SURFACE PARCEL / BUOYANCY','wetbulb2m':'2 M / APPROXIMATE WET BULB','lcl':'SURFACE-PARCEL ESTIMATE / METERS AGL','shear500':'10 M TO 500 MB VECTOR DIFFERENCE','cin':'SURFACE PARCEL / INHIBITION MAGNITUDE','gust':'MODEL SURFACE WIND GUST','temp850':'850 MB TEMPERATURE','wind850':'850 MB WIND','reflectivity':'SIMULATED VERTICAL COMPOSITE','mucape':'MOST-UNSTABLE PARCEL / BUOYANCY'}
             figure.text(.99,.027,'MODEL GUIDANCE · '+context.get(product,'500 MB / APPROX. 18,000 FT'),fontsize=7,color=SAGE,ha='right')
-        figure.text(.012,.005,'NOAA/NCEP model guidance · Natural Earth · CH Weather / Christopher Horne',fontsize=6.5,color=SAGE)
+        figure.text(.012,.005,('WOOF-NAM by Recast / CC BY 4.0 · Not an official NOAA forecast' if model=='woofnam' else 'ECMWF Open Data / CC BY 4.0' if model=='ecmwf' else 'NOAA/NCEP model guidance')+' · Natural Earth · CH Weather',fontsize=6.5,color=SAGE)
         figure.text(.99,.005,'Not an official warning or forecast',fontsize=6.5,color=SAGE,ha='right')
         if not overlay_only:figure.savefig(path,dpi=150,facecolor=BG)
         overlay=None
-        if product!='precip':
+        if product not in ('precip','ptype'):
             field_artist.set_visible(False);land_artist.set_facecolor('none')
             overlay_path=Path(path).with_name(Path(path).stem+'-overlay.png')
             figure.savefig(overlay_path,dpi=150,transparent=True)
             with Image.open(overlay_path) as source:
-                optimized_overlay=source.convert('RGBA').quantize(colors=256,method=Image.Quantize.FASTOCTREE)
+                optimized_overlay=source.convert('RGBA').resize((1600,900),Image.Resampling.LANCZOS).quantize(colors=256,method=Image.Quantize.FASTOCTREE)
             webp_path=overlay_path.with_suffix('.webp')
             optimized_overlay.convert('RGBA').save(webp_path,format='WEBP',lossless=True,method=2)
             overlay_path.unlink();overlay_path=webp_path
@@ -242,6 +246,6 @@ def render(path,root,model,run,hour,fields,grid,geo,product='precip',overlay_onl
     if not overlay_only:
         with Image.open(path) as image:
             if image.size!=(2400,1350):raise ValueError('Incorrect model graphic dimensions')
-            optimized=image.convert('RGB').quantize(colors=256,method=Image.Quantize.FASTOCTREE)
+            optimized=image.convert('RGB').resize((1600,900),Image.Resampling.LANCZOS).quantize(colors=256,method=Image.Quantize.FASTOCTREE)
         optimized.save(path,optimize=True)
     return dict(readouts=lookup,overlay=overlay)

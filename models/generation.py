@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import timedelta
 import hashlib
 import requests
+from PIL import Image
 from sunset.data import session
 from .data import fetch_frame,surface_request_details
 from .render import render
@@ -13,10 +14,16 @@ def iso(value):return value.isoformat(timespec="seconds").replace("+00:00","Z")
 def render_products(staging,root,model,cycle,hour,fields,grid,geo,url):
     stem=f'{model}-{cycle:%Y%m%d%H}-f{hour:03d}'
     images={};lookup=None
-    for product in available_products(model):
+    for product in available_products(model,fields):
         filename=stem+('' if product=='precip' else '-'+product)+'.png'
         target=Path(staging)/filename
         result=render(target,root,model,cycle,hour,fields,grid,geo,product)
+        # Lossless WebP preserves the rendered pixels while reducing transfer bytes.
+        webp=target.with_suffix('.webp')
+        with Image.open(target) as image:image.convert('RGB').save(webp,format='WEBP',lossless=True,method=2)
+        if webp.stat().st_size<target.stat().st_size:
+            target.unlink();target=webp;filename=target.name
+        else:webp.unlink()
         images[product]=dict(image_filename=filename,image_sha256=hashlib.sha256(target.read_bytes()).hexdigest())
         if isinstance(result,dict):
             if result.get('readouts'):
@@ -25,6 +32,9 @@ def render_products(staging,root,model,cycle,hour,fields,grid,geo,url):
                 overlay=result['overlay'];images[product]['overlay_filename']=overlay['filename']
                 images[product]['overlay_sha256']=hashlib.sha256((Path(staging)/overlay['filename']).read_bytes()).hexdigest()
     frame=dict(hour=hour,valid_time_utc=iso(cycle+timedelta(hours=hour)),**images.get('precip',images['temp2m']),images=images,source_url=url)
+    if model in ('woofnam','rrfs','ecmwf'):
+        if lookup:frame['readouts']=lookup
+        return frame
     endpoint,query=surface_request_details(model,cycle,hour)
     frame['surface_source_url']=requests.Request('GET',endpoint,params=query).prepare().url
     if model=='hrrr':frame['vorticity_source_url']=f'https://noaa-hrrr-bdp-pds.s3.amazonaws.com/hrrr.{cycle:%Y%m%d}/conus/hrrr.t{cycle:%H}z.wrfprsf{hour:02d}.grib2'

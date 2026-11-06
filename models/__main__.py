@@ -1,4 +1,4 @@
-"""Generate bounded real-data GFS/HRRR frame sets: python -m models."""
+"""Generate bounded real-data model frame sets: python -m models."""
 import argparse
 from datetime import datetime,timezone,timedelta
 from pathlib import Path
@@ -14,6 +14,7 @@ from sunset.data import session,geography
 from .data import candidate_cycles,fetch_frame
 from .generation import render_products,init_renderer,render_cached
 from .fields import PRODUCTS,parameter_metadata
+from .catalog import MODELS
 from .render import region_presets
 
 ROOT=Path(__file__).resolve().parent.parent
@@ -29,6 +30,10 @@ def frame_hours(end,step):
 
 
 def cycle_plans(model,now,end,step):
+    if model=='ecmwf':return [(cycle,list(range(0,145,3))+list(range(150,361,6))) for cycle in candidate_cycles('gfs',now) if cycle.hour in (0,12)]
+    if model=='woofnam':
+        from .woof import cycles
+        with session() as http:return [(cycle,frame_hours(end,step)) for cycle in cycles(http,now)]
     hours=frame_hours(end,step)
     if model=='hrrr' and end>18:
         # Extended forecasts are issued only at 00/06/12/18 UTC.
@@ -45,6 +50,8 @@ def run(args):
     output=ROOT/'generated/models';output.mkdir(parents=True,exist_ok=True)
     specs=[('gfs',cycle_plans('gfs',now,args.gfs_end,args.gfs_step)),
            ('hrrr',cycle_plans('hrrr',now,args.hrrr_end,args.hrrr_step))]
+    if getattr(args,'model',None) in ('woofnam','rrfs','ecmwf'):
+        m=args.model;specs=[(m,cycle_plans(m,now,MODELS[m]['end'],MODELS[m]['step']))]
     if getattr(args,'model',None):specs=[spec for spec in specs if spec[0]==args.model]
     results=[]
     with session() as http,tempfile.TemporaryDirectory(dir=output) as staging:
@@ -57,14 +64,14 @@ def run(args):
                 try:
                     # Probe the last frame before downloading a whole incomplete cycle.
                     fetch_frame(http,cache,model,cycle,hours[-1]);time.sleep(1)
-                    frames=[];grid_id=None;total_bytes=0;pending=[];regions=None
+                    frames=[];grid_id=None;total_bytes=0;pending=[];regions=None;field_names=set()
                     workers=getattr(args,'workers',1)
                     pool=ProcessPoolExecutor(max_workers=workers,initializer=init_renderer,initargs=(geo,)) if workers>1 else None
                     try:
                         for hour in hours:
                             fields,grid,url,size=fetch_frame(http,cache,model,cycle,hour)
                             if grid_id is not None and grid['id']!=grid_id:raise ValueError('Model grid changed within a cycle')
-                            grid_id=grid['id'];total_bytes+=size
+                            grid_id=grid['id'];total_bytes+=size;field_names.update(fields)
                             if regions is None:regions=region_presets(grid)
                             if pool:
                                 pending.append(pool.submit(render_cached,staging,ROOT,model,cycle,hour,url))
@@ -79,13 +86,13 @@ def run(args):
                         frames.extend(future.result() for future in pending)
                     finally:
                         if pool:pool.shutdown(wait=True,cancel_futures=True)
-                    success=dict(id=model,name=model.upper(),status='available',model_run=iso(cycle),
-                        frames=frames,forecast_step_hours={'gfs':args.gfs_step,'hrrr':args.hrrr_step,'nam':3}[model],
-                        forecast_end_hour=hours[-1],requested_end_hour={'gfs':args.gfs_end,'hrrr':args.hrrr_end,'nam':getattr(args,'nam_end',84)}[model],regions=regions,
+                    success=dict(source_credit=MODELS[model]['credit'],id=model,name=MODELS[model]['name'],status='available',model_run=iso(cycle),
+                        frames=frames,forecast_step_hours={'gfs':args.gfs_step,'hrrr':args.hrrr_step,'nam':3,'woofnam':3,'rrfs':3,'ecmwf':3}[model],
+                        forecast_end_hour=hours[-1],requested_end_hour={'gfs':args.gfs_end,'hrrr':args.hrrr_end,'nam':getattr(args,'nam_end',84),'woofnam':84,'rrfs':84,'ecmwf':360}[model],regions=regions,
                         extended_run=model=='hrrr' and hours[-1]>18,
-                        native_resolution={'gfs':'0.25 degrees','hrrr':'3 km','nam':'12 km'}[model],
-                        downloaded_subset_bytes=total_bytes,pressure_field='MSLMA (MAPS reduction)' if model=='hrrr' else 'PRMSL',
-                        input_fields=(['CRAIN','CSNOW','CFRZR','CICEP','PRATE'] if model!='nam' else [])+['TMP 2 m','DPT 2 m','RH 2 m','CAPE surface','UGRD 10 m','VGRD 10 m','UGRD 500 mb','VGRD 500 mb','ABSV 500 mb','HGT 500 mb','HGT 1000 mb','MSLMA' if model=='hrrr' else 'PRMSL'])
+                        native_resolution=MODELS[model]['resolution'],
+                        downloaded_subset_bytes=total_bytes,pressure_field={'hrrr':'MSLMA (MAPS reduction)','rrfs':'MSLET','ecmwf':'MSL'}.get(model,'PRMSL'),
+                        input_fields=sorted(field_names))
                     break
                 except Exception as error:
                     LOG.warning('%s %s unavailable: %s',model,cycle.isoformat(),error)
@@ -97,16 +104,16 @@ def run(args):
         manifest=dict(schema_version=2,generated_at_utc=iso(datetime.now(timezone.utc)),models=results,
             product='Precipitation, pressure, 2 m temperature/dewpoint, 500 mb heights/wind/absolute vorticity',
             products=parameter_metadata(),
-            image_width=2400,image_height=1350,
+            image_width=1600,image_height=900,virtual_coordinate_width=2400,virtual_coordinate_height=1350,
             rate_units='mm/hour liquid equivalent',minimum_rate_mm_hour=.1,
             pressure_contour_interval_hpa=4,thickness_contour_interval_dam=6,
             notes=['Numerical model guidance, not observations or official warnings.',
-                'Precipitation type comes from the model categorical flags, not a 540-dam threshold.',
+                'Precipitation type uses native model categories for GFS/HRRR/RRFS/ECMWF. WOOF-NAM uses an experimental profile diagnosis; thickness is not the classifier.',
                 'Mixed flags means more than one categorical flag is active; unclassified means a rate without an active flag.',
                 'Surface pressure is displayed as mean sea-level pressure; HRRR uses the MAPS reduction.',
                 'H/L symbols mark selected broad closed extrema in smoothed mean sea-level pressure; values are hPa.',
                 'Temperature/dewpoint are Fahrenheit, wind speed is knots, heights are decameters, absolute vorticity is 10^-5 s^-1.',
-                'Pointer readouts are nearest native samples on a 4-image-pixel display grid, not observations or exact address forecasts.',
+                'Pointer readouts are nearest native samples on an 8-virtual-pixel display grid, not observations or exact address forecasts.',
                 'Only the published forecast hours and latest complete selected cycle are available.'])
         manifest_path=staging/'latest.json'
         manifest_path.write_text(json.dumps(manifest,indent=2,allow_nan=False)+'\n',encoding='utf-8')
@@ -132,7 +139,7 @@ def run(args):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--model',choices=['gfs','hrrr'],help='Generate one independent model job; default generates both')
+    parser.add_argument('--model',choices=list(MODELS),help='Generate one independent model job; default generates both')
     parser.add_argument('--gfs-end',type=int,choices=range(0,385),default=384)
     parser.add_argument('--gfs-step',type=int,choices=[3,6,12],default=3)
     parser.add_argument('--hrrr-end',type=int,choices=range(0,49),default=48)
@@ -143,7 +150,7 @@ def main():
     try:
         run(args)
         from .airports import generate
-        if args.model!='nam':generate()
+        if args.model in ('gfs','hrrr',None):generate()
     except Exception:
         LOG.exception('Model generation failed; no synthetic frames substituted')
         return 1
