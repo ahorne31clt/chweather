@@ -1,20 +1,65 @@
-Combined update: NBM bulletins, GFS/HRRR airport meteogram comparisons, and separate Fall Color page.
+VERIFIED GITHUB UPDATE
 
-Compared with GitHub main commit 255ae7409294efb04381b130c521a91009d40db1.
+Compared against main commit 65523e7dde45e8f3d6668bcd11c9f439c821b340, committed 2026-11-05T13:59:39Z.
+Compared 317 managed source/site files; 264 already match (ignoring line-ending differences); 53 need adding/replacing.
 
-Extract the ZIP first. Upload its folders and files into the repository root, preserving paths and replacing existing files. Do not upload the ZIP itself as the website.
+Extract this ZIP and upload its contents at the repository root, retaining folders and replacing matching files. Nothing needs deleting. Files already matching GitHub are omitted. Do not upload the ZIP as a single repository file.
 
-After committing run Publish latest weather website. No model or outlook generation is required for these page changes.
+Replace all included .github/workflows files at their exact paths. If the folder is hidden, use GitHub's file editor. Run Scheduled weather models after uploading. If included ENSO changes have not been generated, run Daily weather and sunset outlooks as well. Publish latest weather website follows the generation workflows automatically.
 
-Files:
-REPLACE assets/meteogram.js
+Generated forecasts, downloads, caches, local preview files and prior ZIPs are intentionally excluded: Actions regenerates forecast products. GitHub-only files (including domain configuration) are preserved. No palette/profile feature was implemented.
+
+EXACT UPLOAD LIST:
+REPLACE .github/workflows/models.yml
+REPLACE .github/workflows/publish.yml
+REPLACE assets/centers.js
+REPLACE assets/enso.css
+REPLACE assets/enso.js
+REPLACE assets/model-probe.js
 REPLACE assets/models.css
-REPLACE assets/mos.js
-REPLACE assets/navigation.js
-REPLACE assets/outlooks.js
-ADD docs/NBM-METEOGRAM-UPDATE.md
-REPLACE index.html
+REPLACE assets/models.js
+REPLACE assets/seasonal.css
+REPLACE assets/seasonal.js
+REPLACE assets/tropical.js
+REPLACE centers/__main__.py
+ADD centers/gis.py
+ADD centers/render.py
+ADD docs/BRANDED-AGENCY-MAPS.md
+REPLACE docs/CENTERS.md
+ADD docs/SEVERE-WINTER-AND-NEW-MODELS.md
+REPLACE docs/TROPICAL.md
+ADD docs/WOOF-NAM-AND-MODEL-SCALING.md
+REPLACE enso/__main__.py
+REPLACE enso/index.html
+REPLACE models/__init__.py
+REPLACE models/__main__.py
+ADD models/catalog.py
+REPLACE models/data.py
+ADD models/diagnostics_data.py
+REPLACE models/fields.py
+REPLACE models/generation.py
 REPLACE models/index.html
-REPLACE mos/index.html
-ADD outlooks/fall.html
-REPLACE outlooks/index.html
+ADD models/public_models.py
+REPLACE models/readouts.py
+REPLACE models/render.py
+ADD models/winter.py
+ADD models/woof.py
+REPLACE outlooks/centers.html
+REPLACE scripts/collect_publication.py
+REPLACE scripts/merge_models.py
+ADD scripts/model_site_budget.py
+REPLACE scripts/package_github.py
+REPLACE scripts/package_site.py
+REPLACE seasonal/index.html
+ADD tests/test_branded_guidance.py
+REPLACE tests/test_centers.py
+ADD tests/test_enso_forecast.py
+REPLACE tests/test_independent_publication.py
+ADD tests/test_model_diagnostics.py
+ADD tests/test_model_site_budget.py
+REPLACE tests/test_models.py
+REPLACE tests/test_packaging.py
+ADD tests/test_woof.py
+REPLACE tropical/__main__.py
+ADD tropical/cartography.py
+REPLACE tropical/index.html

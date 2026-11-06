@@ -1,0 +1,326 @@
+{
+  "commit": "65523e7dde45e8f3d6668bcd11c9f439c821b340",
+  "committed_utc": "2026-11-05T13:59:39Z",
+  "compared": 317,
+  "matching": 264,
+  "files": [
+    {
+      "path": ".github/workflows/models.yml",
+      "action": "replace",
+      "size": 3994,
+      "sha256": "0db0cff3bce338e2bee44b9b0dfd1ae072d30ba881c5bbee7236caf5983c6ae3"
+    },
+    {
+      "path": ".github/workflows/publish.yml",
+      "action": "replace",
+      "size": 1679,
+      "sha256": "365c961cb4d277f33178c57ac1ff39e48b20a48a2ad5f0b10933f3b47e547b9b"
+    },
+    {
+      "path": "assets/centers.js",
+      "action": "replace",
+      "size": 6896,
+      "sha256": "d748568a50057d694c20ed479a265d0dd2498f81c07eb2a4432ff7493b06a812"
+    },
+    {
+      "path": "assets/enso.css",
+      "action": "replace",
+      "size": 4872,
+      "sha256": "24f055f332ead67ca7f9c47eace51f3e55132b2a40e35e12e2067caddf1731b9"
+    },
+    {
+      "path": "assets/enso.js",
+      "action": "replace",
+      "size": 16775,
+      "sha256": "d60fb7f146adacb52453967bb3a4ceb3f50399078d2704b1ae613c8e1a8e3b7d"
+    },
+    {
+      "path": "assets/model-probe.js",
+      "action": "replace",
+      "size": 11068,
+      "sha256": "301b6a3dbeeb69ba7d483b78ecd03787a9bfd737b7b2957497c2a9fae7358250"
+    },
+    {
+      "path": "assets/models.css",
+      "action": "replace",
+      "size": 11776,
+      "sha256": "fa4cf6d550154ac251226b6b558315438f600da19045ea81c1fa3f946189a2f8"
+    },
+    {
+      "path": "assets/models.js",
+      "action": "replace",
+      "size": 23958,
+      "sha256": "a48306ff82870c7a9453f9ce514cb66972f24daaf18254f89ea02b4ee9f1b396"
+    },
+    {
+      "path": "assets/seasonal.css",
+      "action": "replace",
+      "size": 6258,
+      "sha256": "5ac5e1417c3e601bd69b2e1ca7d0dc29dd958ee683761f2574d6d17920884c93"
+    },
+    {
+      "path": "assets/seasonal.js",
+      "action": "replace",
+      "size": 15992,
+      "sha256": "7f66f665f3a078c78a3a5075c29ab978b359013fbc9922a430281f2041dfd17e"
+    },
+    {
+      "path": "assets/tropical.js",
+      "action": "replace",
+      "size": 5355,
+      "sha256": "d916aa4f36c446b67bb0734a148b002e3177cc5af452d487cf37855b9686c1f8"
+    },
+    {
+      "path": "centers/__main__.py",
+      "action": "replace",
+      "size": 6639,
+      "sha256": "fa5d9c2bbad90e649c324a512ab1fcc1ec892d2be287f16bd82f928c42704289"
+    },
+    {
+      "path": "centers/gis.py",
+      "action": "add",
+      "size": 12462,
+      "sha256": "f4a48586f6465c1a48c202bdd80a2a959c7aae377973e899cc7447e3c3ba8876"
+    },
+    {
+      "path": "centers/render.py",
+      "action": "add",
+      "size": 7296,
+      "sha256": "6dc855732aa585989b3a2f770ed75d128ab16ef0f9bd30772c28574b65a9c6bf"
+    },
+    {
+      "path": "docs/BRANDED-AGENCY-MAPS.md",
+      "action": "add",
+      "size": 7177,
+      "sha256": "296626ca74f4773032f73a0b1f3dc0a82d6b732235c865821dea06cf295231fd"
+    },
+    {
+      "path": "docs/CENTERS.md",
+      "action": "replace",
+      "size": 6341,
+      "sha256": "0462aefa95deaab6313bb3e39380bbc982fb9836633536d04cba36f8a9adbc24"
+    },
+    {
+      "path": "docs/SEVERE-WINTER-AND-NEW-MODELS.md",
+      "action": "add",
+      "size": 6505,
+      "sha256": "8b0d3b18b91ebdef3d083eb0618576417e8b5dca9a8f3fd3b7d23b32a49d05c5"
+    },
+    {
+      "path": "docs/TROPICAL.md",
+      "action": "replace",
+      "size": 3386,
+      "sha256": "f2cee72315834babc7d9826e218a9b206a679ed71f48b71b35b9b67df8a43a6b"
+    },
+    {
+      "path": "docs/WOOF-NAM-AND-MODEL-SCALING.md",
+      "action": "add",
+      "size": 5494,
+      "sha256": "15f4bf89e46f1ca5db34c5e251f18ec53099fffd52f45a9600a1f98d9b3f0dea"
+    },
+    {
+      "path": "enso/__main__.py",
+      "action": "replace",
+      "size": 9307,
+      "sha256": "73f15c11d21e494fcc207d21f412ca5958223021e7391fc0cd5630b2815590a3"
+    },
+    {
+      "path": "enso/index.html",
+      "action": "replace",
+      "size": 13278,
+      "sha256": "8c007705380bf22a99eeae427eb7befe53ce04361f09f758ef08429505d64884"
+    },
+    {
+      "path": "models/__init__.py",
+      "action": "replace",
+      "size": 65,
+      "sha256": "a012ac7b65c8bd2558c0939ab90dc918ce01c50e7b87006ea57e23eaa8cabba6"
+    },
+    {
+      "path": "models/__main__.py",
+      "action": "replace",
+      "size": 9984,
+      "sha256": "5119107a71ced95c8a31103a726bdcb8504045e40d59637785e2e489c35b3f97"
+    },
+    {
+      "path": "models/catalog.py",
+      "action": "add",
+      "size": 633,
+      "sha256": "9aca6d14c953b81ef6d68274576b56f3825b775834caa640fce3f42a7a9e4555"
+    },
+    {
+      "path": "models/data.py",
+      "action": "replace",
+      "size": 17094,
+      "sha256": "6fc313201f6e411b6229cf771fc339f3d3d2f8ff0b03ae8867d4158952046a99"
+    },
+    {
+      "path": "models/diagnostics_data.py",
+      "action": "add",
+      "size": 1626,
+      "sha256": "73763e40cdb20df5bd9cf6cb55134edb0fea53c8c7d8a08d02a3543418c84f56"
+    },
+    {
+      "path": "models/fields.py",
+      "action": "replace",
+      "size": 7598,
+      "sha256": "1cf39aaf2543f0d2168fc20d417b235e50765276de9235ca12c704893bbc3831"
+    },
+    {
+      "path": "models/generation.py",
+      "action": "replace",
+      "size": 2849,
+      "sha256": "17dd102c8d9a683111a1c755648106eea1ab2ef8bccc8b495e551961512514ff"
+    },
+    {
+      "path": "models/index.html",
+      "action": "replace",
+      "size": 15776,
+      "sha256": "2325d20988956c30bdb5cd1576eeff2e45efc56b6d11d4fa2514677df142fb56"
+    },
+    {
+      "path": "models/public_models.py",
+      "action": "add",
+      "size": 4058,
+      "sha256": "607ec03068d29e9b5213664f424612332a94d22c6ff2f6bf1fb06c54670678f5"
+    },
+    {
+      "path": "models/readouts.py",
+      "action": "replace",
+      "size": 3963,
+      "sha256": "081bf26ffbe0cb13da1aa6e76e19e1581bbd71518dc0b3a4605aa342e94c720c"
+    },
+    {
+      "path": "models/render.py",
+      "action": "replace",
+      "size": 17597,
+      "sha256": "4cf171155f0c9b2bfe0067bb9df4b90db812d65c4357e84a4d25afaaad935ac1"
+    },
+    {
+      "path": "models/winter.py",
+      "action": "add",
+      "size": 1890,
+      "sha256": "d84074e7026e28911b9d880e80489d2b8c6c572b017c0095481ebc32dd9d23d7"
+    },
+    {
+      "path": "models/woof.py",
+      "action": "add",
+      "size": 5147,
+      "sha256": "fd0c97b98cbb1433a8432c6354f948bd6e3e2f4cfc50b7a24689536a29b57bbd"
+    },
+    {
+      "path": "outlooks/centers.html",
+      "action": "replace",
+      "size": 6377,
+      "sha256": "d254b3a6bd18a9e7c331429e5330d11606052d1402e157affdcc835af690f394"
+    },
+    {
+      "path": "scripts/collect_publication.py",
+      "action": "replace",
+      "size": 10040,
+      "sha256": "c6e3cbd03335aba27113e258f77a6ba86b632f368a3bee0816b7cefe4d415de8"
+    },
+    {
+      "path": "scripts/merge_models.py",
+      "action": "replace",
+      "size": 6169,
+      "sha256": "f49472192cb50994cb954627d11a12e2f423d26f36e7f86520e9b77995976765"
+    },
+    {
+      "path": "scripts/model_site_budget.py",
+      "action": "add",
+      "size": 3195,
+      "sha256": "be9de22e53b6a524178d5aa02fd21ebfcd7724a1b2a2f4b917f656edc02261aa"
+    },
+    {
+      "path": "scripts/package_github.py",
+      "action": "replace",
+      "size": 6510,
+      "sha256": "05f0ef89725129ec5765868ec23ba5505fe0a239c5994ef18cbb664de03cb95d"
+    },
+    {
+      "path": "scripts/package_site.py",
+      "action": "replace",
+      "size": 6565,
+      "sha256": "6162a5e511957a84e0a4b2323bebd04b5f1e5327ee0401e89c2e6da6aa96a273"
+    },
+    {
+      "path": "seasonal/index.html",
+      "action": "replace",
+      "size": 11250,
+      "sha256": "8349334981a502876bfbbb49999e58fc5a72839ee151fd0fcc00988b95e282a7"
+    },
+    {
+      "path": "tests/test_branded_guidance.py",
+      "action": "add",
+      "size": 3142,
+      "sha256": "f5bf5d9fd43e93ddcd75cc6442b18b7b62454f185ba9c84eee9f66f628d91022"
+    },
+    {
+      "path": "tests/test_centers.py",
+      "action": "replace",
+      "size": 3040,
+      "sha256": "eda025eeb64035e08a43f3da641cb4b47dabeedcc0edfabe79266e4ac3f7a502"
+    },
+    {
+      "path": "tests/test_enso_forecast.py",
+      "action": "add",
+      "size": 738,
+      "sha256": "3cdb649c2d57ccb70374a5f4c1328b86b93401f28d307796102940dc858ed226"
+    },
+    {
+      "path": "tests/test_independent_publication.py",
+      "action": "replace",
+      "size": 7207,
+      "sha256": "a730208412f0fd083b9c06c352848e605d6b7c6c4ab8ba9264dca865cb9071cc"
+    },
+    {
+      "path": "tests/test_model_diagnostics.py",
+      "action": "add",
+      "size": 1855,
+      "sha256": "81fdb14c3d0807e445b0729beb73e0c066df627b0caacab50acb8030d6d2d7f9"
+    },
+    {
+      "path": "tests/test_model_site_budget.py",
+      "action": "add",
+      "size": 1220,
+      "sha256": "b532f91f6f5a91840da729c48bfd17119e8042c2b9ba8c0125b48bd228bc1a47"
+    },
+    {
+      "path": "tests/test_models.py",
+      "action": "replace",
+      "size": 10704,
+      "sha256": "b2f6ba2807146af20c7c20e450db17be71d1d6a65e4642fc1a0f99bc25c21715"
+    },
+    {
+      "path": "tests/test_packaging.py",
+      "action": "replace",
+      "size": 4596,
+      "sha256": "b82ea8b894f5e85e9ad4342843211620be69fb98eca4ee43d32971eba6604891"
+    },
+    {
+      "path": "tests/test_woof.py",
+      "action": "add",
+      "size": 1490,
+      "sha256": "758e94aa1098490ffaf01a40d5a61cd0b893e1164ea0a73e1992fe6d14ee67f8"
+    },
+    {
+      "path": "tropical/__main__.py",
+      "action": "replace",
+      "size": 5323,
+      "sha256": "ec9a48c110c098ac651613262426f6867aece12219842824ea242ce78986d973"
+    },
+    {
+      "path": "tropical/cartography.py",
+      "action": "add",
+      "size": 3242,
+      "sha256": "b87b455fc8248152517f074b7c890c8cd155efaa7f863c09cf9ae6e81b107e45"
+    },
+    {
+      "path": "tropical/index.html",
+      "action": "replace",
+      "size": 5759,
+      "sha256": "8bafd5a29d087fce2fb00ca437cae9fd0a0fc7c76f3916111cc0f13ee15ed76a"
+    }
+  ]
+}
