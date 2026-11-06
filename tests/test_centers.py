@@ -54,12 +54,14 @@ def test_failed_refresh_keeps_entire_previous_publication(tmp_path,monkeypatch):
         def __exit__(self,*_):return False
     monkeypatch.setattr(pipeline,'session',Session)
     count=0
-    def fail(http,url,path):
+    def fail(http,item,now):
         nonlocal count
         count+=1
         if count==2:raise ValueError('deliberate download failure')
-        Path(path).write_bytes(b'staged but never published');return {}
-    monkeypatch.setattr(pipeline,'fetch_graphic',fail)
+        return [],{'valid_period_label':'Test period'}
+    monkeypatch.setattr(pipeline,'wpc',fail)
+    monkeypatch.setattr(pipeline,'geography',lambda *args:None)
+    monkeypatch.setattr(pipeline,'render',lambda path,*args:Image.new('RGB',(400,300)).save(path))
     with pytest.raises(ValueError,match='deliberate'):
         pipeline.run(tmp_path)
     assert json.loads((tmp_path/'latest.json').read_text())=={'previous':True}

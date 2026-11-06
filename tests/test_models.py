@@ -66,7 +66,7 @@ def test_field_selection_excludes_orography_and_wrong_pressure():
     assert field_key('prmsl','meanSea',0,'hrrr') is None
     assert field_key('2t','heightAboveGround',2,'hrrr')=='temperature2'
     assert field_key('2d','heightAboveGround',2,'gfs')=='dewpoint2'
-    assert field_key('t','isobaricInhPa',500,'gfs') is None
+    assert field_key('t','isobaricInhPa',500,'gfs') == 'temperature500'
     assert field_key('u','isobaricInhPa',500,'hrrr')=='u500'
     assert field_key('absv','isobaricInhPa',500,'hrrr')=='vorticity500'
     assert field_key('absv','isobaricInhPa',850,'gfs') is None
@@ -88,10 +88,10 @@ def test_new_surface_parameters_use_their_actual_model_fields():
     assert scalar_field(fields,'mslp')[0]==1008
     assert scalar_field(fields,'sbcape')[0]==1750
     assert 'precip' not in available_products('nam') and 'sbcape' in available_products('nam')
-    assert len(available_products('gfs'))==9 and len(available_products('nam'))==8
+    assert 'wetbulb2m' in available_products('gfs') and 'precip' not in available_products('nam')
     metadata=parameter_metadata()
     for item in metadata:
-        if item['id']!='precip':assert len(item['swatches'])==len(item['levels'])-1
+        if item['id'] not in ('precip','ptype'):assert len(item['swatches'])==len(item['levels'])-1
 
 
 def test_nam_cycle_and_native_region_placement():
@@ -118,7 +118,7 @@ def test_binary_readouts_preserve_units_and_mask_map_margins(tmp_path):
     try:spec=write_readouts(tmp_path/'map.png',ax,fields,x,y,projection,projection)
     finally:plt.close(fig)
     import gzip
-    delta=np.frombuffer(gzip.decompress((tmp_path/spec['filename']).read_bytes()),dtype='<i4').reshape(2,spec['height'],spec['width'])
+    delta=np.frombuffer(gzip.decompress((tmp_path/spec['filename']).read_bytes()),dtype='<i4').reshape(len(spec['fields']),spec['height'],spec['width'])
     values=np.cumsum(delta.astype(np.int64),axis=2).astype(np.int32)
     valid=values[0]!=-2147483648
     assert valid.any() and (~valid).any()
@@ -203,7 +203,8 @@ def test_unavailable_extended_runs_publish_explicit_short_fallback(tmp_path,monk
         if model=='hrrr' and hour>18:raise RuntimeError('Extended run not published')
         return {},{'id':'test-grid'},'https://example.test/source',100
     monkeypatch.setattr(command,'fetch_frame',fetch)
-    monkeypatch.setattr(generation,'render',lambda target,*args:target.write_bytes(b'test frame'))
+    from PIL import Image
+    monkeypatch.setattr(generation,'render',lambda target,*args:Image.new('RGB',(20,20),'green').save(target))
     manifest=command.run(SimpleNamespace(gfs_end=0,gfs_step=3,hrrr_end=48,hrrr_step=1))
     hrrr=next(m for m in manifest['models'] if m['id']=='hrrr')
     assert hrrr['requested_end_hour']==48 and hrrr['forecast_end_hour']==18

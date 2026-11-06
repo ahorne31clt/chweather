@@ -10,12 +10,12 @@ from scripts import package_site as export
 
 def part(root,model):
     folder=root/f'model-{model}'/'generated/models';folder.mkdir(parents=True)
-    end={'gfs':384,'hrrr':48,'nam':84}[model];step=1 if model=='hrrr' else 3
+    end={'gfs':384,'hrrr':48,'nam':84,'woofnam':84}[model];step=1 if model=='hrrr' else 3
     item={'id':model,'status':'available','model_run':'2026-10-31T00:00:00Z','extended_run':model=='hrrr',
           'frames':[{'hour':h,'image_filename':f'{model}-{h}.png'} for h in range(0,end+1,step)]}
     (folder/'latest.json').write_text(json.dumps({'schema_version':2,'models':[item]}))
     for frame in item['frames']:(folder/frame['image_filename']).write_bytes(b'image')
-    if model!='nam':
+    if model not in ('nam','woofnam'):
         (folder/'airports').mkdir();(folder/'airports/catalog.json').write_text('[]')
         (folder/f'airports/{model}.bin').write_bytes(b'airport')
         a={'id':model,'model_run':item['model_run'],'chunks':[{'filename':model+'.bin'}]}
@@ -118,3 +118,11 @@ def test_partial_weather_restores_old_missing_maps_without_overwriting_new_spc(t
     assert len(manifest['retained_products'])==4
     assert (folder/'spc-day1.png').read_text()=='2'
     assert (folder/'rain-nc.png').read_text()=='1'
+
+
+def test_woof_publishes_with_other_models_without_fake_airport_rates(tmp_path):
+    for model in ('gfs','hrrr','woofnam'):part(tmp_path/'parts',model)
+    result=merge.merge(tmp_path/'parts',tmp_path/'merged')
+    assert [m['id'] for m in result['models']]==['gfs','hrrr','woofnam']
+    airport=json.loads((tmp_path/'merged/airports/latest.json').read_text())
+    assert [m['id'] for m in airport['models']]==['gfs','hrrr']

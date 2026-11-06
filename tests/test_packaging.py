@@ -64,7 +64,7 @@ def test_workflow_generates_every_packaged_product_before_publishing():
     assert '--only-binary=:all:' in workflow
     assert 'sudo timeout 120 apt-get' in workflow
     models=(Path(__file__).resolve().parents[1]/'.github/workflows/models.yml').read_text()
-    assert 'model: [gfs, hrrr]' in models
+    assert 'model: [gfs, hrrr, woofnam, rrfs, ecmwf]' in models
     assert 'python -m models --model "$MODEL"' in models
     publish=(Path(__file__).resolve().parents[1]/'.github/workflows/publish.yml').read_text()
     assert 'workflows: [Daily weather and sunset outlooks, Scheduled weather models, Seasonal climate outlooks]' in publish
