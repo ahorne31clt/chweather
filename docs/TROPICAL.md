@@ -1,3 +1,9 @@
+# Tropical maps
+
+**Current implementation:** custom CH Weather maps are rendered from official forecast GIS data. See [BRANDED-AGENCY-MAPS.md](BRANDED-AGENCY-MAPS.md) for products, dates, validation, upload files and commands. The original agency graphic remains an optional comparison view.
+
+## Earlier screenshot implementation (superseded)
+
 # Tropical outlooks
 
 `/tropical/` covers the Atlantic, Eastern Pacific, and Central Pacific. Each basin offers the official NHC/CPHC 2-day and 7-day formation graphics, preserved unchanged, a dated outlook bulletin, and systems from NHC's active-system list. The bulletin's own RSS publication time is shown; its official nominal issuance is retained in the bulletin text and on the graphic. A feed-wide timestamp is not substituted for the bulletin's timestamp. All text is inserted safely as text. Missing feeds or invalid graphics fail the refresh instead of inventing a quiet outlook.

@@ -1,3 +1,9 @@
+# WPC and CPC maps
+
+**Current implementation:** custom CH Weather maps are rendered from official forecast GIS data. See [BRANDED-AGENCY-MAPS.md](BRANDED-AGENCY-MAPS.md) for products, dates, validation, upload files and commands. The original agency graphic remains an optional comparison view.
+
+## Earlier screenshot implementation (superseded)
+
 # WPC and CPC outlooks
 
 The `/outlooks/centers.html` viewer contains 17 official graphics:
