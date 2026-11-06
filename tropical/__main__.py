@@ -6,7 +6,8 @@ from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 import hashlib,json,logging,os,tempfile
 from PIL import Image
-from sunset.data import session,download
+from sunset.data import session,download,geography
+from .cartography import fetch as fetch_vectors,draw as draw_outlook
 
 ROOT=Path(__file__).resolve().parent.parent
 BASINS=[('atl','Atlantic','atlc','at','al'),('pac','Eastern Pacific','epac','ep','ep'),('cpac','Central Pacific','cpac','cp','cp')]
@@ -44,6 +45,9 @@ def run():
     output=ROOT/'generated/tropical';output.mkdir(parents=True,exist_ok=True)
     with session() as http,tempfile.TemporaryDirectory(dir=output) as temp:
         temp=Path(temp);basins=[]
+        now=datetime.now(timezone.utc)
+        geo=geography(http,ROOT/'.cache/sunset')
+        atl_pac=fetch_vectors(http);central=fetch_vectors(http,central=True)
         response=http.get('https://www.nhc.noaa.gov/CurrentStorms.json',timeout=(15,45));response.raise_for_status()
         systems=response.json().get('activeStorms')
         if not isinstance(systems,list):raise ValueError('Invalid NHC current-system list')
@@ -59,16 +63,16 @@ def run():
             images=[]
             for days in (2,7):
                 url=f'https://www.nhc.noaa.gov/xgtwo/two_{key}_{days}d0.png'
-                filename=f'{key}-{days}day.png';path=temp/filename;download(http,url,path,maximum=5_000_000)
-                with Image.open(path) as image:
-                    if image.format!='PNG' or image.width<500 or image.height<300:raise ValueError('Invalid NHC outlook graphic')
-                    width,height=image.size;image.verify()
-                images.append(dict(days=days,image_filename=filename,image_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),width=width,height=height,source_url=url))
+                filename=f'{key}-{days}day.png';path=temp/filename
+                rows,vector_meta=central if key=='cpac' else atl_pac
+                graphic_meta=draw_outlook(path,ROOT,key,name,days,bulletin,rows,vector_meta,geo,now)
+                with Image.open(path) as image:width,height=image.size
+                images.append(dict(graphic_meta,days=days,image_filename=filename,image_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),width=width,height=height,source_url=url))
             basins.append(dict(id=key,name=name,official_basin_id=basin,bulletin=bulletin,feed_url=feed,images=images,
                 active_systems=[system for system in cleaned if system['id'].startswith(prefix)]))
-        result=dict(schema_version=1,generated_at_utc=iso(datetime.now(timezone.utc)),basins=basins,
+        result=dict(schema_version=2,generated_at_utc=iso(datetime.now(timezone.utc)),basins=basins,
             active_system_count=len(cleaned),systems_source='https://www.nhc.noaa.gov/CurrentStorms.json',
-            notes=['Official NHC/CPHC graphics, preserved unchanged. Issuance is printed on each graphic.',
+            notes=['CH Weather maps drawn from official NHC/CPHC GIS outlook areas and probabilities; not an independent forecast. Issuance and GIS timestamps remain distinct.',
                 'Formation probability is not the probability of landfall, local impact, or hurricane strength.',
                 'This is a dated snapshot. Check official advisories for changing conditions.'])
         target=temp/'latest.json';target.write_text(json.dumps(result,indent=2,allow_nan=False)+'\n',encoding='utf-8')
