@@ -15,6 +15,23 @@ SOURCES=dict(roni=CPC+'/data/indices/RONI.ascii.txt',oni=CPC+'/data/indices/oni.
 SEASONS=['DJF','JFM','FMA','MAM','AMJ','MJJ','JJA','JAS','ASO','SON','OND','NDJ']
 
 
+def parse_forecast_table(html):
+    table=re.search(r'<table[^>]*id=["\']outlook-table["\'][^>]*>(.*?)</table>',html,re.S|re.I)
+    if not table:raise ValueError('CPC outlook numerical table unavailable')
+    rows=[]
+    for row in re.findall(r'<tr\b[^>]*>(.*?)</tr>',table[1],re.S|re.I):
+        cells=re.findall(r'<t[dh]\b[^>]*>(.*?)</t[dh]>',row,re.S|re.I)
+        if len(cells)!=8:continue
+        label=plain(cells[0]).split()[0]
+        if label not in SEASONS:continue
+        values=[float(plain(c)) for c in cells[1:]]
+        if any(not -6<=v<=6 for v in values) or values!=sorted(values):raise ValueError('Invalid CPC forecast quantiles')
+        if rows and SEASONS.index(label)!=(SEASONS.index(rows[-1]['season'])+1)%12:raise ValueError('Nonconsecutive forecast seasons')
+        rows.append(dict(season=label,quantiles_c=values))
+    if not 6<=len(rows)<=12:raise ValueError('Incomplete CPC forecast table')
+    return rows
+
+
 class Text(HTMLParser):
     def __init__(self):super().__init__();self.parts=[];self.blocked=0
     def handle_starttag(self,tag,attrs):
@@ -118,7 +135,7 @@ def run(output=None):
             width,height=graphic.size;graphic.verify()
         path.write_bytes(payload)
         result=dict(schema_version=1,generated_at_utc=now.isoformat(timespec='seconds').replace('+00:00','Z'),
-            discussion=discussion,roni=roni,oni=oni,weekly_nino34=weekly[-156:],latest_roni=latest_roni,latest_oni=latest_oni,
+            forecast_quantiles=parse_forecast_table(outlook),discussion=discussion,roni=roni,oni=oni,weekly_nino34=weekly[-156:],latest_roni=latest_roni,latest_oni=latest_oni,
             official_outlook=dict(issued_month=issue[1],image_filename=path.name,image_sha256=image_hash,source_url=url,width=width,height=height),
             sources=SOURCES,notes=['Official ENSO alert comes from CPC discussion, never from automatic threshold classification.',
                 'RONI and ONI are overlapping three-month indices; weekly Nino 3.4 is a different SST anomaly measure.',
