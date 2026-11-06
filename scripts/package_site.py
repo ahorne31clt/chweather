@@ -113,6 +113,10 @@ def package(output,zipped=False):
             target=output/path.relative_to(ROOT)
             target.parent.mkdir(parents=True,exist_ok=True)
             shutil.copy2(path,target)
+        import sys
+        if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
+        from scripts.model_site_budget import fit_model_graphics
+        fit_model_graphics(output)
     print(f'Packaged {len(files)} static files: {output}')
 
 

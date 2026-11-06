@@ -1,5 +1,6 @@
 """Validate and combine independently generated GFS and HRRR bundles."""
 import argparse
+from models.catalog import MODELS
 from datetime import datetime,timezone
 import json
 from pathlib import Path
@@ -28,12 +29,12 @@ def check_part(folder,model):
     if item['id']!=model or item['status']!='available' or not item.get('frames'):raise ValueError(f'Incomplete {model} model job')
     if not isinstance(item.get('model_run'),str):raise ValueError('Missing model run')
     hours=[frame['hour'] for frame in item['frames']]
-    end={'gfs':384,'hrrr':48,'nam':84}[model]
+    end={'gfs':384,'hrrr':48,'nam':84,'woofnam':84,'rrfs':84,'ecmwf':360}[model]
     if model=='hrrr' and not item.get('extended_run'):end=18
     step=1 if model=='hrrr' else 3
-    if hours!=list(range(0,end+1,step)):raise ValueError(f'{model} job must retain its complete forecast-hour range')
+    if hours!=(list(range(0,145,3))+list(range(150,361,6)) if model=='ecmwf' else list(range(0,end+1,step))):raise ValueError(f'{model} job must retain its complete forecast-hour range')
     paths=list(tree_files(folder/'latest.json'))
-    if model!='nam':
+    if model in ('gfs','hrrr'):
         airport=json.loads((folder/'airports/latest.json').read_text(encoding='utf-8'))
         if len(airport['models'])!=1 or airport['models'][0]['id']!=model or airport['models'][0]['model_run']!=item['model_run']:raise ValueError('Airport and map runs differ')
         paths.extend(tree_files(folder/'airports/latest.json'))
@@ -43,14 +44,15 @@ def check_part(folder,model):
 def merge(parts,output,allow_missing=False):
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     manifests=[];airports=[];catalog_hash=None;copied=set();missing=[];airport_notes=[]
-    for model in ('gfs','hrrr'):
+    for model in MODELS:
         folder=Path(parts)/f'model-{model}'/'generated/models'
+        if not (folder/'latest.json').is_file() and model in ('woofnam','rrfs','ecmwf') and not allow_missing:continue
         if not (folder/'latest.json').is_file() and allow_missing:
             missing.append(dict(id=model,name=model.upper(),status='unavailable',message='No validated completed run is available yet.'))
             continue
         manifest,paths=check_part(folder,model);manifests.append(manifest)
         a=None
-        if model!='nam':
+        if model in ('gfs','hrrr'):
             a=json.loads((folder/'airports/latest.json').read_text(encoding='utf-8'))
             if catalog_hash is not None and catalog_hash!=a['catalog_sha256']:
                 airport_notes.append(f'{model.upper()} airport guidance omitted because its airport catalog differs; map guidance remains available.')
@@ -90,7 +92,7 @@ if __name__=='__main__':
     parser.add_argument('--parts',default='.model-parts')
     parser.add_argument('--output',default='generated/models')
     parser.add_argument('--check-part')
-    parser.add_argument('--model',choices=['gfs','hrrr'])
+    parser.add_argument('--model',choices=list(MODELS))
     parser.add_argument('--stage',help='Copy only validated referenced assets to this artifact root')
     parser.add_argument('--allow-missing',action='store_true')
     args=parser.parse_args()

@@ -10,6 +10,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode,urlparse
 from urllib.request import Request,urlopen,build_opener,HTTPRedirectHandler
 from zipfile import ZipFile
+from models.catalog import MODELS
 from scripts.package_site import product_files,PRODUCTS
 from scripts.merge_models import check_part,merge
 
@@ -157,7 +158,7 @@ def main():
             if available:successes+=1
             else:unavailable_product(ROOT,product)
         models=[]
-        for model in ('gfs','hrrr'):
+        for model in MODELS:
             try:
                 if restore_model(repository,model,token,temporary):models.append(model)
             except Exception as error:print(f'{model} update unavailable: {error}')

@@ -66,6 +66,13 @@ def package():
         for name in sorted(set(seasonal)):archive.write(ROOT/name,name)
     shutil.copy2(out.parent/'ch-weather-seasonal-update.zip',out.parent/'ch-weather-blend-update.zip')
 
+    agency=['centers/gis.py','centers/render.py','centers/__main__.py','tropical/cartography.py','tropical/__main__.py',
+        'assets/centers.js','assets/tropical.js','outlooks/centers.html','tropical/index.html',
+        'tests/test_centers.py','tests/test_branded_guidance.py','docs/BRANDED-AGENCY-MAPS.md','docs/CENTERS.md','docs/TROPICAL.md','scripts/package_github.py']
+    with ZipFile(out.parent/'ch-weather-branded-agency-maps-update.zip','w',ZIP_DEFLATED) as archive:
+        for name in sorted(agency):archive.write(ROOT/name,name)
+
+
     optics=['optics/index.html','assets/optics.js','assets/optics.css','assets/navigation.js',
         'outlooks/index.html','.github/workflows/sunset.yml','scripts/package_site.py',
         'scripts/package_github.py','tests/test_optics.py','tests/test_optics_context.py','tests/test_contrails.py','docs/CONTRAIL-ENVIRONMENT.md','docs/SOLAR-OPTICS.md','README.md']
