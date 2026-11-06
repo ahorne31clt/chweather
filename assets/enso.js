@@ -49,11 +49,80 @@
     const latest=values.at(-1);chart.append(node('circle',{cx:g.x(values.length-1),cy:g.y(latest.anomaly_c),r:4,fill:'#c19244'}));
     $('weekly-latest').textContent='Latest published week: '+dateLabel(latest.week_centered)+' / '+signed(latest.anomaly_c,1);
   }
+  function graphicBase(svg,title,subtitle,height){
+    svg.replaceChildren();svg.append(node('rect',{width:720,height,fill:'#151d18'}));
+    svg.append(node('image',{href:new URL('../assets/ch-weather-logo.png',document.baseURI).href,x:20,y:12,width:46,height:46}));
+    svg.append(node('text',{x:80,y:32,fill:'#E8EBE8','font-size':19,'font-weight':700},title));
+    svg.append(node('text',{x:80,y:53,fill:'#C19244','font-size':11},subtitle));
+    svg.append(node('text',{x:20,y:height-14,fill:'#9FB4AC','font-size':10},'CH WEATHER / NOAA CPC observed indices / Snapshot '+data.generated_at_utc.slice(0,10)));
+  }
+  function houseGraphics(){
+    const chart=$('calendar'),latestYear=Math.max(...data.roni.map(r=>r.year)),firstYear=latestYear-29;
+    const seasons=['DJF','JFM','FMA','MAM','AMJ','MJJ','JJA','JAS','ASO','SON','OND','NDJ'];
+    graphicBase(chart,'THE PACIFIC / 30-YEAR RONI CALENDAR','OVERLAPPING THREE-MONTH SEASONS / OBSERVED INDEX IN CELSIUS',760);
+    seasons.forEach((label,i)=>chart.append(node('text',{x:101+i*49,y:90,fill:'#9FB4AC','font-size':11,'text-anchor':'middle'},label)));
+    const lookup=new Map(data.roni.map(r=>[key(r),r]));
+    for(let y=firstYear;y<=latestYear;y++){
+      const py=103+(y-firstYear)*19;
+      chart.append(node('text',{x:62,y:py+12,fill:'#9FB4AC','font-size':11,'text-anchor':'end'},y));
+      seasons.forEach((season,i)=>{
+        const row=lookup.get(y+'-'+season),v=row?.anomaly_c;
+        const valid=Number.isFinite(v),color=!valid?'#303b34':Math.abs(v)<.5?'#67786c':v>0?'#D68A54':'#659DAF';
+        const label=y+' '+season+': '+(valid?signed(v):'Unavailable');
+        const cell=node('rect',{x:78+i*49,y:py,width:46,height:16,fill:color,tabindex:0,role:'img','aria-label':label});
+        cell.append(node('title',{},label));
+        const read=()=>{$('calendar-readout').textContent=label+' / Three-month observed RONI, not an official episode classification.';};
+        cell.addEventListener('pointerenter',read);cell.addEventListener('click',read);cell.addEventListener('focus',read);chart.append(cell);
+      });
+    }
+    [['#659DAF','RONI <= -0.5 C'],['#67786c','Between -0.5 and +0.5 C'],['#D68A54','RONI >= +0.5 C']].forEach(([color,label],i)=>{
+      chart.append(node('rect',{x:28+i*228,y:694,width:14,height:12,fill:color}),node('text',{x:48+i*228,y:704,fill:'#E8EBE8','font-size':10},label));
+    });
+    chart.append(node('text',{x:28,y:727,fill:'#9FB4AC','font-size':10},'Threshold colors describe individual seasons. Adjacent seasons overlap; recent values may be revised.'));
+    const common=[...data.roni].reverse().find(r=>Number.isFinite(r.anomaly_c)&&Number.isFinite(oni.get(key(r))?.anomaly_c));
+    const compare=$('index-compare');graphicBase(compare,'RONI & ONI / SAME-SEASON COMPARISON',common?seasonLabel(common).toUpperCase():'NO SHARED OBSERVATION AVAILABLE',340);
+    if(common){
+      const other=oni.get(key(common)),limit=Math.max(1,Math.ceil(Math.max(Math.abs(common.anomaly_c),Math.abs(other.anomaly_c))));
+      const x=v=>360+v/limit*260;
+      compare.append(node('line',{x1:360,x2:360,y1:85,y2:260,stroke:'#9FB4AC','stroke-dasharray':'4 4'}));
+      for(const [i,name,v,color] of [[0,'RONI',common.anomaly_c,'#63B38B'],[1,'ONI',other.anomaly_c,'#C19244']]){
+        const py=120+i*80;
+        compare.append(node('rect',{x:Math.min(360,x(v)),y:py,width:Math.max(1,Math.abs(x(v)-360)),height:30,fill:color}),node('text',{x:32,y:py+21,fill:'#E8EBE8','font-size':17},name),node('text',{x:650,y:py+21,fill:'#E8EBE8','font-size':18,'text-anchor':'end'},signed(v)));
+      }
+      for(const v of [-limit,0,limit])compare.append(node('text',{x:x(v),y:285,fill:'#9FB4AC','font-size':12,'text-anchor':'middle'},v+' C'));
+      $('index-note').textContent=seasonLabel(common)+'. RONI '+signed(common.anomaly_c)+'; ONI '+signed(other.anomaly_c)+'. These are distinct indices, not competing forecasts.';
+    }
+  }
+  document.querySelectorAll('[data-enso-save]').forEach(button=>button.addEventListener('click',()=>{
+    if(!data)return;const svg=$(''+button.dataset.ensoSave).cloneNode(true);svg.setAttribute('xmlns',NS);
+    // Keep exports self-contained: a text wordmark replaces the external logo image.
+    svg.querySelectorAll('image').forEach(image=>image.remove());
+    const blob=new Blob([new XMLSerializer().serializeToString(svg)],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='CHWeather_ENSO_'+button.dataset.ensoSave+'_'+data.generated_at_utc.slice(0,10)+'.svg';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }));
+  function forecastGraphic(){
+    const svg=$('forecast'),rows=data.forecast_quantiles;
+    svg.replaceChildren();
+    if(!Array.isArray(rows)||rows.length<6){$('forecast-status').textContent='Forecast numbers are not in this published snapshot yet. Run Daily weather and sunset outlooks to refresh ENSO; the official source remains linked above.';return;}
+    if(rows.some(r=>!Array.isArray(r.quantiles_c)||r.quantiles_c.length!==7||r.quantiles_c.some((v,i,a)=>!Number.isFinite(v)||v < -6||v>6||(i&&v<a[i-1]))))throw new Error('Invalid forecast quantiles');
+    const values=rows.flatMap(r=>r.quantiles_c),low=Math.floor(Math.min(-.5,...values)*2)/2-.25,high=Math.ceil(Math.max(.5,...values)*2)/2+.25;
+    const x=i=>80+i*850/(rows.length-1),y=v=>360-(v-low)/(high-low)*255;
+    svg.append(node('rect',{width:1000,height:480,fill:'#151d18'}),node('image',{href:new URL('../assets/ch-weather-logo.png',document.baseURI).href,x:20,y:12,width:60,height:60}),node('text',{x:95,y:37,fill:'#E8EBE8','font-size':25,'font-weight':700},'CH WEATHER / ENSO OUTLOOK'),node('text',{x:95,y:62,fill:'#C19244','font-size':14},'CPC NUMERICAL GUIDANCE / ISSUED '+data.official_outlook.issued_month.toUpperCase()));
+    for(let v=Math.ceil(low*2)/2;v<=high;v+=.5)svg.append(node('line',{x1:80,x2:930,y1:y(v),y2:y(v),stroke:'#567160','stroke-width':1,'stroke-opacity':.5}),node('text',{x:65,y:y(v)+4,fill:'#9FB4AC','font-size':13,'text-anchor':'end'},v.toFixed(1)));
+    [[0,6,.18],[1,5,.28],[2,4,.5]].forEach(([a,b,opacity])=>{
+      const path=rows.map((r,i)=>(i?'L':'M')+x(i)+' '+y(r.quantiles_c[a])).join(' ')+rows.map((r,i)=>[r,i]).reverse().map(([r,i])=>'L'+x(i)+' '+y(r.quantiles_c[b])).join(' ')+' Z';
+      svg.append(node('path',{d:path,fill:'#55AC7F',opacity}));
+    });
+    svg.append(node('path',{d:rows.map((r,i)=>(i?'L':'M')+x(i)+' '+y(r.quantiles_c[3])).join(' '),stroke:'#E3B669','stroke-width':3,fill:'none'}));
+    rows.forEach((r,i)=>{svg.append(node('text',{x:x(i),y:385,fill:'#E8EBE8','font-size':14,'text-anchor':'middle'},r.season));const dot=node('circle',{cx:x(i),cy:y(r.quantiles_c[3]),r:5,fill:'#E3B669'});dot.append(node('title',{},r.season+' median '+r.quantiles_c[3]+' C; 5th–95th '+r.quantiles_c[0]+' to '+r.quantiles_c[6]+' C'));svg.append(dot);});
+    svg.append(node('text',{x:80,y:92,fill:'#9FB4AC','font-size':12},'RONI / °C'),node('text',{x:80,y:420,fill:'#E3B669','font-size':14},'Median'),node('text',{x:200,y:420,fill:'#9FB4AC','font-size':14},'Green bands: middle 50% / 70% / 90% forecast ranges'),node('text',{x:24,y:458,fill:'#9FB4AC','font-size':12},'Source: NOAA CPC / CH Weather visualization / Overlapping three-month seasons'));
+    $('forecast-status').textContent='Official CPC forecast values, drawn in CH Weather’s graphic system. Hover over a gold point for exact quantiles.';
+  }
   function clear(){
     for(const id of ['alert','roni','weekly'])$(id).textContent='—';
     for(const id of ['roni-season','weekly-date','weekly-latest','outlook-date'])$(id).textContent='';
     $('issued').textContent='Official information unavailable.';$('synopsis-box').hidden=true;$('outlook').hidden=true;$('outlook-link').removeAttribute('href');
-    $('history').replaceChildren();$('weekly-chart').replaceChildren();$('season').disabled=true;$('season-value').textContent='Index data unavailable.';
+    $('forecast').replaceChildren();$('calendar').replaceChildren();$('index-compare').replaceChildren();$('index-note').textContent='Observed comparison unavailable.';$('history').replaceChildren();$('weekly-chart').replaceChildren();$('season').disabled=true;$('season-value').textContent='Index data unavailable.';
   }
   async function load(){
     $('refresh').disabled=true;
@@ -67,8 +136,9 @@
       const latest=data.weekly_nino34.at(-1);$('weekly').textContent=signed(latest.anomaly_c,1);$('weekly-date').textContent='Week centered '+dateLabel(latest.week_centered);
       $('synopsis').textContent=data.discussion.synopsis;$('synopsis-box').hidden=false;$('next').textContent=data.discussion.next_scheduled_date?'Next discussion scheduled by CPC: '+dateLabel(data.discussion.next_scheduled_date)+'.':'';
       $('outlook-date').textContent='Official outlook issued '+data.official_outlook.issued_month+' · Read the season labels and forecast ranges on the graphic.';
-      const url=new URL(file,base);url.searchParams.set('v',data.official_outlook.image_sha256);$('outlook').src=url.href;$('outlook').hidden=false;$('outlook-link').href=url.href;
-      history();weekly();
+      $('outlook').hidden=true;
+      forecastGraphic();
+      history();weekly();houseGraphics();
       const age=Date.now()-Date.parse(data.generated_at_utc),discussionAge=Date.now()-Date.parse(data.discussion.issued_date+'T00:00:00Z');
       const old=age>48*3600000||discussionAge>50*86400000;
       $('status').dataset.state=old?'stale':'ok';$('status').textContent=(old?'OLDER SNAPSHOT / DISCUSSION · ':'')+'Website snapshot generated '+data.generated_at_utc.replace('T',' ')+'. Source dates differ; the weekly and seasonal indices are not real-time readings.';

@@ -33,9 +33,9 @@
     const item=manifest.products.find(p=>p.id===$('period').value);if(!item)return;
     const selection=++serial;productID=item.id;history.replaceState(null,'','?'+new URLSearchParams({center,product:productID}));
     $('image').hidden=true;$('image-link').removeAttribute('href');$('title').textContent=item.title;
-    $('source-name').textContent='NOAA / NWS / '+center.toUpperCase()+' · OFFICIAL GRAPHIC';$('description').textContent=item.description;
+    $('source-name').textContent='NOAA / NWS / '+center.toUpperCase()+($('mode').value==='official'?' · ORIGINAL AGENCY GRAPHIC':' · OFFICIAL FORECAST / CH WEATHER MAP');$('description').textContent=item.description;
     $('official').href=safeURL(item.official_page_url);$('image').alt=`Official ${center.toUpperCase()} ${item.title}. Read issuance, validity and the legend printed on this map.`;
-    $('retrieved').textContent='';status('Loading the selected official graphic…');
+    $('retrieved').textContent='';status('Loading the selected outlook…');
     const snapshot=new URL(item.image_filename,manifestURL);snapshot.searchParams.set('v',item.image_sha256);
     try{
       if($('mode').value==='official'){
@@ -48,9 +48,10 @@
       }
       const fallback=$('status').dataset.state==='stale';
       if(!await loadImage(snapshot.href,selection))return;
+      $('source-name').textContent='NOAA / NWS / '+center.toUpperCase()+' · OFFICIAL FORECAST / CH WEATHER MAP';
       const old=Date.now()-Date.parse(item.retrieved_at_utc)>30*3600000;
-      if(!fallback)status(old?'This published snapshot is more than 30 hours old. Check the official source for newer guidance.':'Published snapshot. Check the issuance and exact valid interval on the map; newer guidance may be available at the official source.',old?'stale':'ok');
-      $('retrieved').textContent='SNAPSHOT RETRIEVED · '+item.retrieved_at_utc.replace('T',' ');
+      if(!fallback)status(old?'This published snapshot is more than 30 hours old. Check the official source for newer guidance.':'CH Weather presentation of official forecast areas and probabilities. Check the printed issuance and valid period; this is not an independent CH Weather forecast.',old?'stale':'ok');
+      $('retrieved').textContent='GENERATED · '+item.retrieved_at_utc.replace('T',' ')+(item.valid_period_label?' · VALID '+item.valid_period_label:'');
     }catch(error){if(selection===serial){$('image').hidden=true;$('image-link').removeAttribute('href');status('This graphic is unavailable. Open “Official source & discussion” for the latest outlook.','error');}}
   }
   async function load(){
@@ -58,7 +59,7 @@
     try{
       const response=await fetch(manifestURL,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('Missing outlook catalog');
       const data=await response.json();
-      if(data.schema_version!==1||!Array.isArray(data.products)||!data.products.length)throw new Error('Invalid outlook catalog');
+      if(![1,2].includes(data.schema_version)||!Array.isArray(data.products)||!data.products.length)throw new Error('Invalid outlook catalog');
       for(const p of data.products){if(!/^(?:wpc|cpc)-[a-z0-9-]+\.png$/.test(p.image_filename)||!['wpc','cpc'].includes(p.center)||!Number.isFinite(Date.parse(p.retrieved_at_utc)))throw new Error('Invalid outlook item');safeURL(p.source_url);safeURL(p.official_page_url);}
       manifest=data;
       const selected=manifest.products.find(p=>p.id===productID);if(selected)center=selected.center;

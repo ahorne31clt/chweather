@@ -82,7 +82,7 @@ async function draw(){if(!manifest)return;const chosenWindow=manifest.windows.fi
 
 
 
- active=item;blendInfo();by('map-title').textContent=item.title;by('valid').textContent=item.season_label+' / initialized '+item.initialization_month;const imageUrl=safe(item.image_filename);imageUrl.searchParams.set('v',item.image_sha256);image.src=imageUrl;image.alt=item.title+' for '+item.season_label+', '+item.model_label;image.hidden=false;by('empty').hidden=true;by('download').href=safe(item.image_filename);
+ for(const b of document.querySelectorAll('[data-seasonal-guidance]'))b.setAttribute('aria-pressed',String(b.dataset.seasonalGuidance===model.value));active=item;blendInfo();by('map-title').textContent=item.title;by('valid').textContent=item.season_label+' / initialized '+item.initialization_month;const imageUrl=safe(item.image_filename);imageUrl.searchParams.set('v',item.image_sha256);image.src=imageUrl;image.alt=item.title+' for '+item.season_label+', '+item.model_label;image.hidden=false;by('empty').hidden=true;by('download').href=safe(item.image_filename);
 
 
 
@@ -130,6 +130,7 @@ async function draw(){if(!manifest)return;const chosenWindow=manifest.windows.fi
 
 
 
+for(const b of document.querySelectorAll('[data-seasonal-guidance]'))b.addEventListener('click',()=>{model.value=b.dataset.seasonalGuidance;model.dispatchEvent(new Event('change'));});
 image.addEventListener('error',()=>{by('empty').hidden=false;by('empty').textContent='The map could not be loaded. Try refreshing or choose another season.';image.hidden=true;});
 
 

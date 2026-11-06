@@ -11,10 +11,11 @@
     const official=new URL('https://www.nhc.noaa.gov/gtwo.php');official.searchParams.set('basin',item.official_basin_id);official.searchParams.set('fdays',days.value);document.querySelector('#tropical-official').href=official.href;
     const url=mode.value==='official'?new URL(graphic.source_url):new URL(graphic.image_filename,base);url.searchParams.set('v',mode.value==='official'?Date.now():graphic.image_sha256);
     try{const loaded=new Image();await new Promise((resolve,reject)=>{loaded.onload=resolve;loaded.onerror=()=>reject(new Error('The outlook graphic could not be loaded. Use the official outlook link or try the published snapshot.'));loaded.src=url;});if(id!==request)return;
+      document.querySelector('#tropical-map-credit').textContent=mode.value==='official'?'NOAA / NHC / CPHC · ORIGINAL AGENCY GRAPHIC':'NOAA / NHC / CPHC · OFFICIAL GUIDANCE / CH WEATHER PRESENTATION';
       image.src=url;image.alt=item.name+' official '+days.value+'-day tropical cyclone formation outlook. Read the issuance printed on the graphic.';image.hidden=false;
       if(mode.value==='official'){status.textContent='Direct NHC/CPHC image loaded '+date(new Date())+'. Issuance is printed on the graphic; the stored bulletin and system list are hidden.';return;}
       const stale=Date.now()-Date.parse(manifest.generated_at_utc)>8*3600000;
-      status.textContent=(stale?'Older published snapshot. ':'Published snapshot. ')+'Fetched '+date(manifest.generated_at_utc)+'. Check the issuance on the graphic; use “Latest official graphic” for intervening updates.';
+      status.textContent=(stale?'Older published snapshot. ':'CH Weather map / official NHC-CPHC guidance. ')+'Fetched '+date(manifest.generated_at_utc)+'. Forecast areas and probabilities are official; presentation is CH Weather. Use the original agency view for intervening updates.';
       document.querySelector('#tropical-basin-heading').textContent=item.name+' outlook.';
       document.querySelector('#tropical-snapshot-time').textContent='Snapshot '+date(manifest.generated_at_utc);
       document.querySelector('#tropical-issued').textContent='Bulletin published '+date(item.bulletin.published_at_utc||item.bulletin.issued_at_utc)+'. Official issuance is stated in the bulletin below.';

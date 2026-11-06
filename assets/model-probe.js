@@ -3,7 +3,7 @@ window.CHModelProbe=class {
   constructor(stage,map,box){
     this.stage=stage;this.map=map;this.box=box;this.epoch=0;this.cache=new Map();this.view={zoom:1,panX:0,panY:0};this.mode='off';
     this.canvas=document.createElement('canvas');this.canvas.width=2400;this.canvas.height=1350;this.canvas.className='model-smooth-canvas';this.canvas.hidden=true;this.canvas.setAttribute('aria-hidden','true');stage.insertBefore(this.canvas,box);this.position();
-    this.metrics={temp2m:[['temperature2','Temperature'],['dewpoint2','Dewpoint']],dewpoint2m:[['dewpoint2','Dewpoint'],['temperature2','Temperature']],
+    this.metrics={mucape:[['mucape','Most-unstable CAPE']],ptype:[['diagnosed_type','Experimental type'],['reflectivity','Sim. reflectivity'],['pressure','MSLP']],wetbulb2m:[['wetbulb2m','Approx. wet bulb']],lcl:[['lcl','Approx. parcel LCL']],shear500:[['shear500','10 m–500 mb shear']],cin:[['cin','Inhibition magnitude']],gust:[['gust','Model gust']],temp850:[['temp850','850 mb temperature']],wind850:[['wind850','850 mb wind']],reflectivity:[['reflectivity','Sim. reflectivity']],temp2m:[['temperature2','Temperature'],['dewpoint2','Dewpoint']],dewpoint2m:[['dewpoint2','Dewpoint'],['temperature2','Temperature']],
       wind10:[['wind10','10 m wind'],['temperature2','Temperature']],rh2m:[['humidity2','Relative humidity'],['dewpoint2','Dewpoint']],
       mslp:[['pressure','MSLP'],['temperature2','Temperature']],sbcape:[['cape','Surface CAPE'],['humidity2','Relative humidity']],
       wind500:[['wind500','500 mb wind'],['height500','500 mb height']],vort500:[['vorticity500','Abs. vorticity'],['height500','500 mb height']],
@@ -28,7 +28,7 @@ window.CHModelProbe=class {
     const epoch=this.epoch,spec=this.frame?.readouts,controller=this.controller,signal=controller.signal;
     this.help.textContent='Loading numeric model values…';
     this.pending=(async()=>{
-      if(!spec||!/^(gfs|hrrr|nam)-\d{10}-f\d{3}\.bin(\.gz)?$/.test(spec.filename))throw new Error('Numeric values are unavailable for this snapshot.');
+      if(!spec||!/^(gfs|hrrr|nam|woofnam|rrfs|ecmwf)-\d{10}-f\d{3}\.bin(\.gz)?$/.test(spec.filename))throw new Error('Numeric values are unavailable for this snapshot.');
       const url=new URL('../generated/models/'+spec.filename,document.baseURI);url.searchParams.set('v',spec.sha256);
       let grid=this.cache.get(url.href);
       if(!grid){
@@ -40,7 +40,7 @@ window.CHModelProbe=class {
           buffer=await new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
         }
         const fields=spec.field_specs||spec.fields.map(id=>({id,unit:'°F',decimals:1})),bytes=['float32-le','int32-le'].includes(spec.dtype)?4:2;
-        if(fields.length>20||spec.width>1000||spec.height>600||buffer.byteLength!==spec.width*spec.height*fields.length*bytes)throw new Error('Numeric data have an unexpected format.');
+        if(fields.length>48||spec.width>1000||spec.height>600||buffer.byteLength!==spec.width*spec.height*fields.length*bytes)throw new Error('Numeric data have an unexpected format.');
         const view=new DataView(buffer);
         if(spec.dtype==='int32-le'&&spec.delta_axis==='x')for(let f=0;f<fields.length;f++)for(let row=0;row<spec.height;row++){
           const offset=(f*spec.height+row)*spec.width*4;let value=view.getInt32(offset,true);
@@ -71,7 +71,7 @@ window.CHModelProbe=class {
     const {spec}=this.grid,col=Math.floor(px/spec.cell_pixels),row=Math.floor(py/spec.cell_pixels),inside=col>=0&&col<spec.width&&row>=0&&row<spec.height;
     for(const [key,node] of Object.entries(this.nodes)){
       const value=inside?this.value(key,row*spec.width+col):NaN,info=this.grid.fields.find(f=>f.id===key);
-      node.strong.textContent=!Number.isFinite(value)?'—':key==='precip_type'?['Dry / below threshold','Rain','Snow','Freezing rain','Sleet','Mixed flags','Unclassified'][Math.round(value)]||'Unavailable':value.toFixed(info?.decimals??1);
+      node.strong.textContent=!Number.isFinite(value)?'—':(key==='precip_type'||key==='diagnosed_type')?['Dry / below threshold','Rain','Snow','Freezing rain','Sleet','Mixed flags','Unclassified'][Math.round(value)]||'Unavailable':value.toFixed(info?.decimals??1);
       node.unit.textContent=info?.unit||'';
     }
   }
@@ -81,11 +81,11 @@ window.CHModelProbe=class {
   async smooth(){
     if(this.mode==='off'||!this.grid||!this.definition?.swatches){this.hideSmooth();return;}
     const epoch=this.epoch,entry=this.frame.images?.[this.product],filename=entry?.overlay_filename;
-    if(!filename||!/^(gfs|hrrr|nam)-\d{10}-f\d{3}-[a-z0-9]+-overlay\.(png|webp)$/.test(filename)){this.help.textContent='Smoothing is unavailable for this snapshot. Raw values remain available.';return;}
+    if(!filename||!/^(gfs|hrrr|nam|woofnam|rrfs|ecmwf)-\d{10}-f\d{3}-[a-z0-9]+-overlay\.(png|webp)$/.test(filename)){this.help.textContent='Smoothing is unavailable for this snapshot. Raw values remain available.';return;}
     try{
       const overlayURL=new URL('../generated/models/'+filename,document.baseURI);overlayURL.searchParams.set('v',entry.overlay_sha256);
       const [original,overlay]=await Promise.all([this.image(this.map.src),this.image(overlayURL.href)]);if(epoch!==this.epoch||this.mode==='off')return;
-      const key={temp2m:'temperature2',dewpoint2m:'dewpoint2',wind10:'wind10',rh2m:'humidity2',mslp:'pressure',sbcape:'cape',wind500:'wind500',vort500:'display_vorticity500'}[this.product];
+      const key={temp2m:'temperature2',dewpoint2m:'dewpoint2',wind10:'wind10',rh2m:'humidity2',mslp:'pressure',sbcape:'cape',wind500:'wind500',vort500:'display_vorticity500'}[this.product]||this.product;
       if(!this.grid.fields.some(f=>f.id===key))return;
       const {spec}=this.grid,small=document.createElement('canvas');small.width=spec.width;small.height=spec.height;
       const context=small.getContext('2d'),pixels=context.createImageData(spec.width,spec.height),levels=this.definition.levels;
@@ -96,10 +96,10 @@ window.CHModelProbe=class {
         const color=colors[bin];pixels.data.set([...color,255],i*4);
       }
       context.putImageData(pixels,0,0);
-      const ctx=this.canvas.getContext('2d');ctx.clearRect(0,0,2400,1350);ctx.drawImage(original,0,0);
+      const ctx=this.canvas.getContext('2d');ctx.clearRect(0,0,2400,1350);ctx.drawImage(original,0,0,2400,1350);
       const box=spec.map_box_pixels;if(!box)throw new Error('Smoothing geometry is unavailable.');
       ctx.save();ctx.beginPath();ctx.rect(...box);ctx.clip();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.filter='blur(3px)';ctx.drawImage(small,0,0,spec.width*spec.cell_pixels,spec.height*spec.cell_pixels);ctx.restore();
-      ctx.drawImage(overlay,0,0);ctx.fillStyle='#18191A';ctx.fillRect(880,1328,660,21);ctx.font='11px Arial';ctx.textAlign='center';ctx.fillStyle='#9FB4AC';ctx.fillText('DISPLAY SMOOTHING · RAW MODEL VALUES UNCHANGED',1210,1343);
+      ctx.drawImage(overlay,0,0,2400,1350);ctx.fillStyle='#18191A';ctx.fillRect(880,1328,660,21);ctx.font='11px Arial';ctx.textAlign='center';ctx.fillStyle='#9FB4AC';ctx.fillText('DISPLAY SMOOTHING · RAW MODEL VALUES UNCHANGED',1210,1343);
       if(epoch!==this.epoch||this.mode==='off')return;this.canvas.hidden=false;this.map.style.opacity='0';this.position();
     }catch(error){if(epoch===this.epoch){this.hideSmooth();this.help.textContent=error.message+' Native graphic shown.';}}
   }

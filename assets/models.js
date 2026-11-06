@@ -19,7 +19,7 @@ if(modelStage){
   }
   function fileURL(frame){
     const image=frame.images?.[field.value]||(field.value==='precip'?frame:null);
-    if(!image||!/^(gfs|hrrr)-\d{10}-f\d{3}(-(temp2m|dewpoint2m|wind500|vort500|wind10|rh2m|mslp|sbcape))?\.png$/.test(image.image_filename))throw new Error('This field is not published for this model run.');
+    if(!image||!/^[a-z][a-z0-9-]{0,30}-\d{10}-f\d{3}(-[a-z0-9]+)?\.(png|webp)$/.test(image.image_filename))throw new Error('This field is not published for this model run.');
     const url=new URL(image.image_filename,base);url.searchParams.set('v',image.image_sha256);return url.href;
   }
   const smoothing=document.querySelector('#model-smoothing');
@@ -27,7 +27,7 @@ if(modelStage){
   const probe=new CHModelProbe(modelStage,map,readout);
   function loadReadouts(frame,id){
     const definition=manifest.products?.find(p=>p.id===field.value);
-    smoothing.disabled=field.value==='precip';
+    smoothing.disabled=['precip','ptype'].includes(field.value);
     smoothing.value=smoothing.disabled?'off':smoothingPreference;
     probe.load(frame,field.value,definition);
     probe.mode=smoothing.disabled?'off':smoothing.value;
@@ -42,9 +42,21 @@ if(modelStage){
   });
   function loadImage(url){
     if(pendingImages.has(url))return pendingImages.get(url);
-    const promise=new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('This model frame could not be loaded. Try another forecast hour or check back later.'));image.src=url;});
+    const promise=(async()=>{
+      let source=url,objectURL;
+      try{
+        if('caches' in window&&new URL(url).origin===location.origin){
+          const cache=await caches.open('chweather-model-images-v1');
+          let response=await cache.match(url);
+          if(!response){response=await fetch(url,{signal:AbortSignal.timeout(30000)});if(!response.ok)throw new Error('Image unavailable');await cache.put(url,response.clone());const keys=await cache.keys();for(const key of keys.slice(0,Math.max(0,keys.length-48)))await cache.delete(key);}
+          const blob=await response.blob();objectURL=URL.createObjectURL(blob);source=objectURL;
+        }
+      }catch{/* Browser HTTP caching remains available if storage is disabled/full. */}
+      try{return await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('This model frame could not be loaded. Try another forecast hour or check back later.'));image.src=source;});}
+      catch(error){if(objectURL)URL.revokeObjectURL(objectURL);throw error;}
+    })();
     pendingImages.set(url,promise);
-    if(pendingImages.size>8)pendingImages.delete(pendingImages.keys().next().value);
+    if(pendingImages.size>8){const key=pendingImages.keys().next().value;pendingImages.get(key).then(image=>{if(image.src.startsWith('blob:'))URL.revokeObjectURL(image.src);}).catch(()=>{});pendingImages.delete(key);}
     promise.catch(()=>pendingImages.delete(url));return promise;
   }
   function displayMessage(text){message.replaceChildren();message.textContent=text;message.hidden=false;}
@@ -96,9 +108,9 @@ if(modelStage){
     modelStage.setAttribute('aria-busy','true');map.hidden=true;download.setAttribute('aria-disabled','true');readout.hidden=true;probe.hideSmooth();
     displayMessage(`Loading ${model.name} F${String(frame.hour).padStart(3,'0')}…`);
     try{
-      const url=fileURL(frame);await loadImage(url);if(id!==requestID)return;
+      const url=fileURL(frame);const loadedImage=await loadImage(url);if(id!==requestID)return;
       const label=field.selectedOptions[0].textContent;
-      map.src=url;map.alt=`${model.name}, ${label}, run ${model.model_run}, ${frame.hour===0?'model analysis':`forecast hour ${frame.hour}`}, valid ${frame.valid_time_utc}. Temperatures/dewpoints in Fahrenheit; upper-air wind speed in knots, heights in decameters, absolute vorticity in 10^-5 per second. Precipitation maps use solid pressure and dashed thickness contours, with H/L pressure centers.`;
+      map.src=loadedImage.src;map.alt=`${model.name}, ${label}, run ${model.model_run}, ${frame.hour===0?'model analysis':`forecast hour ${frame.hour}`}, valid ${frame.valid_time_utc}. Temperatures/dewpoints in Fahrenheit; upper-air wind speed in knots, heights in decameters, absolute vorticity in 10^-5 per second. Precipitation maps use solid pressure and dashed thickness contours, with H/L pressure centers.`;
       document.querySelector('.model-product').textContent=label.toUpperCase();
       pinnedLegend();
       map.hidden=false;message.hidden=true;modelStage.setAttribute('aria-busy','false');updateClock();
@@ -118,7 +130,7 @@ if(modelStage){
     stop();model=manifest.models.find(item=>item.id===id&&item.status==='available');
     if(!model)return;
     for(const option of field.options)option.disabled=!model.frames.every(frame=>frame.images?.[option.value]||(!frame.images&&option.value==='precip'&&model.id!=='nam'));
-    fieldNotice='';if(field.selectedOptions[0]?.disabled){field.value=Array.from(field.options).find(option=>!option.disabled).value;fieldNotice='Previous parameter unavailable; '+field.selectedOptions[0].textContent+' shown · ';}
+    fieldNotice='';if(field.selectedOptions[0]?.disabled){field.value=(model.id==='woofnam'&&Array.from(field.options).some(option=>option.value==='ptype'&&!option.disabled))?'ptype':Array.from(field.options).find(option=>!option.disabled).value;fieldNotice='Previous parameter unavailable; '+field.selectedOptions[0].textContent+' shown · ';}
     select.value=id;index=0;range.min=0;range.max=model.frames.length-1;range.value=0;
     if(Number.isFinite(wanted))index=model.frames.reduce((best,frame,i)=>Math.abs(Date.parse(frame.valid_time_utc)-wanted)<Math.abs(Date.parse(model.frames[best].valid_time_utc)-wanted)?i:best,0);
     timeNotice=Number.isFinite(wanted)&&Date.parse(model.frames[index].valid_time_utc)!==wanted?'Nearest published valid time · ':'';
@@ -129,8 +141,8 @@ if(modelStage){
     region.value=Array.from(region.options).some(o=>o.value===oldRegion)?oldRegion:'conus';
     modelStage.dataset.modelRun=model.model_run;modelStage.dataset.modelId=model.id;
     modelStage.dataset.modelHours=JSON.stringify(model.frames.map(frame=>frame.hour));
-    document.querySelector('#airport-open').disabled=model.id==='nam';
-    document.querySelector('#airport-open').title=model.id==='nam'?'Airport rate meteograms are available for GFS and HRRR.':'';
+    document.querySelector('#airport-open').disabled=['nam','woofnam','rrfs','ecmwf'].includes(model.id);
+    document.querySelector('#airport-open').title=['nam','woofnam','rrfs','ecmwf'].includes(model.id)?'Airport rate meteograms are available for GFS and HRRR.':'';
     window.dispatchEvent(new CustomEvent('chweather:model-change',{detail:{id:model.id,run:model.model_run}}));
     runLabel.textContent='Init '+formatTime(model.model_run)+' · '+model.native_resolution;
     document.querySelector('#model-end').textContent='F'+String(model.frames.at(-1).hour).padStart(3,'0');
@@ -188,11 +200,12 @@ if(modelStage){
       const updated=await response.json();
       if(!Number.isFinite(Date.parse(updated.generated_at_utc)))throw new Error('Updated publication time could not be verified. Current run retained.');
       if(Date.parse(updated.generated_at_utc)<Date.parse(manifest.generated_at_utc))return;
-      const available=updated.models?.filter(item=>['gfs','hrrr'].includes(item.id)&&item.status==='available'&&item.frames?.length);
+      const available=updated.models?.filter(item=>/^[a-z][a-z0-9-]{0,30}$/.test(item.id)&&item.status==='available'&&item.frames?.length);
       if(!available?.length||available.some(item=>!Number.isFinite(Date.parse(item.model_run))||item.frames.some(frame=>!Number.isInteger(frame.hour)||!Number.isFinite(Date.parse(frame.valid_time_utc)))))throw new Error('Updated model metadata could not be verified. Current run retained.');
       if(updated.generated_at_utc===manifest.generated_at_utc&&available.every(item=>manifest.models.some(old=>old.id===item.id&&old.model_run===item.model_run)))return;
       const wanted=Date.parse(model.frames[index].valid_time_utc),nextModel=available.find(item=>item.id===model.id)||available[0];
       stop();pendingImages.clear();manifest=updated;runNotice='Updated automatically to the latest published guidance · ';
+      for(const item of available){if(!Array.from(select.options).some(o=>o.value===item.id))select.add(new Option(item.name,item.id));}
       for(const option of select.options)option.disabled=!available.some(item=>item.id===option.value);
       window.dispatchEvent(new Event('chweather:model-manifest-update'));
       selectModel(nextModel.id,wanted);
@@ -208,9 +221,11 @@ if(modelStage){
     try{
       const response=await fetch(base,{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('Model guidance is temporarily unavailable. Please check back after the next update.');
       manifest=await response.json();
-      const available=manifest.models?.filter(item=>['gfs','hrrr'].includes(item.id)&&item.status==='available'&&item.frames?.length);
+      for(const product of manifest.products||[]){if(/^[a-z][a-z0-9]+$/.test(product.id)&&!Array.from(field.options).some(o=>o.value===product.id))field.add(new Option(product.label,product.id));}
+      const available=manifest.models?.filter(item=>/^[a-z][a-z0-9-]{0,30}$/.test(item.id)&&item.status==='available'&&item.frames?.length);
       if(!available?.length)throw new Error('No model cycle is available right now. Please check back later.');
       for(const item of available){if(!Number.isFinite(Date.parse(item.model_run))||item.frames.some(frame=>!Number.isInteger(frame.hour)||!Number.isFinite(Date.parse(frame.valid_time_utc))))throw new Error('Model metadata could not be read. Please check back later.');}
+      for(const item of available){if(!Array.from(select.options).some(o=>o.value===item.id))select.add(new Option(item.name,item.id));}
       for(const option of select.options){const item=available.find(item=>item.id===option.value);option.disabled=!item;if(!item)option.textContent=option.value.toUpperCase()+' unavailable';}
       for(const control of [select,field,range,prev,next,play])control.disabled=false;
       if(['off','smooth'].includes(initial.get('smooth'))){smoothing.value=initial.get('smooth');smoothingPreference=smoothing.value;}
