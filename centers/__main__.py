@@ -1,4 +1,4 @@
-"""python -m centers: fetch and validate official WPC/CPC graphics headlessly."""
+"""python -m centers: fetch and validate CH Weather WPC/CPC maps headlessly."""
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from io import BytesIO
@@ -10,7 +10,9 @@ import os
 import tempfile
 
 from PIL import Image
-from sunset.data import session
+from sunset.data import session,geography
+from .gis import cpc,wpc
+from .render import render
 
 ROOT=Path(__file__).resolve().parent.parent
 WPC='https://www.wpc.ncep.noaa.gov'
@@ -70,19 +72,24 @@ def run(output=None):
     output=Path(output or ROOT/'generated/centers');output.mkdir(parents=True,exist_ok=True)
     with session() as http,tempfile.TemporaryDirectory(dir=output) as temp:
         temp=Path(temp);catalog=products()
+        geo=geography(http,ROOT/'.cache/sunset')
+        now=datetime.now(timezone.utc)
         for item in catalog:
             filename=item['id']+'.png'
-            logging.info('Fetching %s',item['title'])
-            item.update(fetch_graphic(http,item['source_url'],temp/filename))
-            item.update(image_filename=filename,issuance_and_validity='Read the issuance and valid period printed on the official graphic.')
-        result=dict(schema_version=1,generated_at_utc=datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00','Z'),
-            products=catalog,notes=['Official NOAA/WPC/CPC maps, visual content and legends preserved. Source GIF/JPEG may be losslessly stored as PNG.',
+            logging.info('Rendering %s from official GIS data',item['title'])
+            rows,details=(cpc if item['center']=='cpc' else wpc)(http,item,now)
+            item.update(details)
+            render(temp/filename,ROOT,item,rows,geo)
+            with Image.open(temp/filename) as image:width,height=image.size
+            item.update(image_filename=filename,image_sha256=hashlib.sha256((temp/filename).read_bytes()).hexdigest(),width=width,height=height,retrieved_at_utc=now.isoformat().replace('+00:00','Z'),issuance_and_validity='Official GIS issuance and valid period printed on the CH Weather map.')
+        result=dict(schema_version=2,generated_at_utc=datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00','Z'),
+            products=catalog,notes=['CH Weather maps drawn from official NOAA/WPC/CPC GIS forecast data. This is a presentation of agency forecasts, not an independent CH Weather forecast.',
                 'Retrieval time and source file modification time are not forecast issuance or validity.',
                 'Dated snapshots; official sources may publish newer guidance between website updates.'])
         manifest=temp/'latest.json';manifest.write_text(json.dumps(result,indent=2,allow_nan=False)+'\n',encoding='utf-8')
         for path in temp.glob('*.png'):os.replace(path,output/path.name)
         os.replace(manifest,output/'latest.json')
-    print(f'Published {len(catalog)} official WPC/CPC graphics',flush=True)
+    print(f'Published {len(catalog)} CH Weather WPC/CPC maps',flush=True)
     return result
 
 
