@@ -22,7 +22,7 @@ document.querySelectorAll('[data-sunset-manifest]').forEach(async section => {
     }).format(new Date());
     const isToday = data.forecast_valid_date === today;
     status.textContent = isToday
-      ? 'Latest outlook · valid for this evening. Daily update target: 8 a.m. Eastern.'
+      ? (data.edition === 'final' ? 'Final afternoon outlook · valid for this evening.' : 'Latest outlook · valid for this evening. Updates start at 8 a.m. and 4 p.m. Eastern.')
       : `This outlook is valid for ${data.forecast_valid_date}, not today. A newer forecast is not available yet.`;
     status.classList.toggle('sunset-stale', !isToday);
     section.querySelector('[data-sunset-date]').textContent = data.forecast_valid_date;
