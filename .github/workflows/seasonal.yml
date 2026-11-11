@@ -34,15 +34,13 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements-sunset*.txt
-      - name: Install native ecCodes library
-        timeout-minutes: 5
-        run: |
-          sudo timeout 120 apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 update -qq
-          sudo timeout 120 apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 install -y --no-install-recommends libeccodes0
       - name: Install prebuilt dependencies
         timeout-minutes: 15
         run: |
           python -m pip install --only-binary=:all: --timeout 30 --retries 2 -r requirements-sunset-dev.txt
+      - name: Verify ecCodes can decode GRIB
+        run: |
+          python -c "import eccodes; message = eccodes.codes_grib_new_from_samples('GRIB2'); print(eccodes.codes_get(message, 'edition')); eccodes.codes_release(message)"
       - name: Test seasonal calculations
         run: python -m pytest -q tests/test_seasonal.py tests/test_seasonal_verification.py
       - name: Cache bounded monthly source files
