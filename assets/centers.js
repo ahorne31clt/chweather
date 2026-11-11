@@ -8,6 +8,16 @@
   function populate(){
     for(const button of document.querySelectorAll('[data-center]'))button.setAttribute('aria-pressed',String(button.dataset.center===center));
     const available=manifest.products.filter(p=>p.center===center);
+    if(!available.length){
+      serial++;
+      for(const id of ['field','period']){$(id).replaceChildren();$(id).disabled=true;}
+      $('image').hidden=true;$('image-link').removeAttribute('href');
+      $('title').textContent=center.toUpperCase()+' outlooks';
+      $('description').textContent='';$('source-name').textContent='';$('retrieved').textContent='';
+      $('official').href=center==='wpc'?'https://www.wpc.ncep.noaa.gov/':'https://www.cpc.ncep.noaa.gov/';
+      status('Published outlooks are unavailable. Open the official source for current guidance.','error');
+      return;
+    }
     const selected=available.find(p=>p.id===productID);
     const groups=[...new Set(available.map(p=>p.group))],old=$('field').value;
     $('field').replaceChildren(...groups.map(group=>{const option=document.createElement('option');option.value=group;option.textContent=({ero:'Excessive rainfall',qpf:'Precipitation totals',temperature:'Temperature',precipitation:'Precipitation'})[group];return option;}));
@@ -50,7 +60,7 @@
       if(!await loadImage(snapshot.href,selection))return;
       $('source-name').textContent='NOAA / NWS / '+center.toUpperCase()+' · OFFICIAL FORECAST / CH WEATHER MAP';
       const old=Date.now()-Date.parse(item.retrieved_at_utc)>30*3600000;
-      if(!fallback)status(old?'This published snapshot is more than 30 hours old. Check the official source for newer guidance.':'CH Weather presentation of official forecast areas and probabilities. Check the printed issuance and valid period; this is not an independent CH Weather forecast.',old?'stale':'ok');
+      if(!fallback)status(item.retained_from_previous_publication?'Showing an earlier snapshot after this product’s latest refresh failed. Check the printed valid period.':old?'This published snapshot is more than 30 hours old. Check the official source for newer guidance.':'CH Weather presentation of official forecast areas and probabilities. Check the printed issuance and valid period; this is not an independent CH Weather forecast.',old||item.retained_from_previous_publication?'stale':'ok');
       $('retrieved').textContent='GENERATED · '+item.retrieved_at_utc.replace('T',' ')+(item.valid_period_label?' · VALID '+item.valid_period_label:'');
     }catch(error){if(selection===serial){$('image').hidden=true;$('image-link').removeAttribute('href');status('This graphic is unavailable. Open “Official source & discussion” for the latest outlook.','error');}}
   }
