@@ -97,7 +97,7 @@ def unavailable_product(root,product):
 
 def restore_product(repository,product,token,temporary):
     candidates=artifact_candidates(repository,'forecast-'+product,token)
-    weather=None;selected={};expected=set()
+    newest=None;selected={};expected=set()
     for index,artifact in enumerate(candidates[:6]):
         destination=temporary/f'{product}-{index}';archive=temporary/f'{product}-{index}.zip'
         try:
@@ -105,29 +105,31 @@ def restore_product(repository,product,token,temporary):
             paths=list(product_files(product,destination))
             metadata=json.loads((destination/'generated'/product/'latest.json').read_text(encoding='utf-8'))
             if metadata.get('status')=='unavailable':continue
-            if product!='weather':
+            if product not in ('weather','centers'):
                 for path in paths:
                     target=ROOT/path.relative_to(destination);target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target)
                 print(f'Restored {product}: validated artifact {artifact["id"]}');return True
-            if weather is None:
-                weather=metadata
+            if newest is None:
+                newest=metadata
                 expected={'spc-day1','spc-day2','spc-day3','weather-national','weather-nc','rain-national','rain-nc'}
-                if metadata.get('foliage_status')!='out_of_season':expected.update({'foliage-national','foliage-nc'})
+                if product=='centers':
+                    expected=set(metadata.get('expected_products') or [item['id'] for item in metadata['products']])
+                elif metadata.get('foliage_status')!='out_of_season':expected.update({'foliage-national','foliage-nc'})
             for item in metadata.get('products',[]):
                 if item['id'] not in expected or item['id'] in selected:continue
                 value=dict(item)
                 if index:value['retained_from_previous_publication']=True
-                selected[item['id']]=value
-                source=destination/'generated/weather'/item['image_filename'];target=ROOT/'generated/weather'/item['image_filename']
+                source=destination/'generated'/product/item['image_filename'];target=ROOT/'generated'/product/item['image_filename']
                 target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(source,target)
+                selected[item['id']]=value
             if expected<=selected.keys():break
         except Exception as error:print(f'{product} artifact {artifact["id"]} could not be used: {error}')
         finally:archive.unlink(missing_ok=True)
-    if product=='weather' and selected:
-        folder=ROOT/'generated/weather';folder.mkdir(parents=True,exist_ok=True)
-        weather=dict(weather,products=list(selected.values()),retained_products=[k for k,v in selected.items() if v.get('retained_from_previous_publication')])
-        (folder/'latest.json').write_text(json.dumps(weather,indent=2,allow_nan=False)+'\n',encoding='utf-8')
-        print(f'Restored weather: {len(selected)} products, {len(weather["retained_products"])} retained from earlier updates');return True
+    if product in ('weather','centers') and selected:
+        folder=ROOT/'generated'/product;folder.mkdir(parents=True,exist_ok=True)
+        merged=dict(newest,products=list(selected.values()),retained_products=[k for k,v in selected.items() if v.get('retained_from_previous_publication')])
+        (folder/'latest.json').write_text(json.dumps(merged,indent=2,allow_nan=False)+'\n',encoding='utf-8')
+        print(f'Restored {product}: {len(selected)} products, {len(merged["retained_products"])} retained from earlier updates');return True
     return False
 
 
