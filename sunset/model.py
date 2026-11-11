@@ -6,7 +6,8 @@ import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage import gaussian_filter
 
-MODEL_VERSION = 'ch-sunset-2.0.0'
+MODEL_VERSION = 'ch-sunset-2.1.0'
+HORIZON_DISTANCES_KM = (30, 70, 120, 180, 240)
 MIN_SEPARATION_KM = 600
 
 
@@ -57,14 +58,23 @@ def haversine(lat, lon, other_lat, other_lon):
 
 def quality_score(low, middle, high, horizon_blocker, visibility):
     """All clouds are fractions, visibility meters. Exact weights in docs."""
-    # Broken rather than completely overcast cloud fields are preferred.
-    upper = np.maximum(.9*high, .7*middle)
-    canvas = np.clip(upper/.55, 0, 1) * (1-.45*np.clip((upper-.65)/.35, 0, 1))
-    score = (18+82*canvas) * (1-.9*low)**1.3
+    # Reward a broken elevated cloud deck. Treat overlapping layers as a
+    # coverage approximation and penalize a widespread middle-cloud blanket.
+    upper = 1-(1-.95*high)*(1-.65*middle)
+    canvas = np.clip(upper/.50, 0, 1)*(1-.60*np.clip((upper-.65)/.35, 0, 1))
+    score = (18+82*canvas)*(1-.9*low)**1.3
+    score *= 1-.35*middle**2
     score *= (1-.85*horizon_blocker)**1.2
-    score *= .75 + .25*np.clip(visibility/16000, 0, 1)
+    score *= .60+.40*np.clip(visibility/16000, 0, 1)
     return np.clip(score, 0, 100)
 
+
+
+def horizon_obstruction(blockers):
+    """Balance a weighted path average against its most obstructed segment."""
+    samples = np.stack(blockers)
+    path_mean = np.average(samples, axis=0, weights=(.30,.25,.20,.15,.10))
+    return .7*path_mean + .3*np.max(samples, axis=0)
 
 def calculate(day, latitudes, longitudes, valid_hours, fields):
     target_lat = latitudes[(latitudes >= 24) & (latitudes <= 50)]
@@ -82,14 +92,14 @@ def calculate(day, latitudes, longitudes, valid_hours, fields):
     blockers = []
     # Sample cloud obstruction toward the actual seasonal solar azimuth, at
     # the OBSERVER's sunset time, not the horizon location's sunset time.
-    for distance in (80, 160, 240):
+    for distance in HORIZON_DISTANCES_KM:
         hlat, hlon = destination(lat, lon, azimuth, distance)
         # Edge padding is downloaded; report a failure rather than extrapolate.
         hpoints = np.column_stack([hours.ravel(), hlat.ravel(), hlon.ravel()])
         low = interpolators['low'](hpoints).reshape(lat.shape)
         mid = interpolators['middle'](hpoints).reshape(lat.shape)
         blockers.append(np.maximum(low, .6*mid))
-    horizon = np.mean(blockers, axis=0)
+    horizon = horizon_obstruction(blockers)
     raw = quality_score(sampled['low'], sampled['middle'], sampled['high'], horizon, sampled['visibility'])
     # Only smooth for ~one native grid cell; never claim added physical resolution.
     score = gaussian_filter(raw, sigma=.65, mode='nearest')

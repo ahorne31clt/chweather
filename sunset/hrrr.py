@@ -12,7 +12,7 @@ from scipy.ndimage import gaussian_filter
 from shapely import intersects_xy
 
 from .data import download
-from .model import solar_sunset, destination, quality_score
+from .model import solar_sunset, destination, quality_score, HORIZON_DISTANCES_KM, horizon_obstruction
 
 LOG = logging.getLogger(__name__)
 FILTER = 'https://nomads.ncep.noaa.gov/cgi-bin/filter_hrrr_2d.pl'
@@ -152,13 +152,13 @@ def calculate(day, grid, valid_hours, fields, usa):
         points = np.column_stack((t, y[rows], x[cols]))
         sampled = {k: fun(points) for k, fun in interpolators.items()}
         blockers = []
-        for distance in (80, 160, 240):
+        for distance in HORIZON_DISTANCES_KM:
             hlat, hlon = destination(a, b, azimuth.flat[ids], distance)
             projected = projection.transform_points(ccrs.PlateCarree(), hlon, hlat)
             ray = np.column_stack((t, projected[:, 1], projected[:, 0]))
             blockers.append(np.maximum(interpolators['low'](ray), .6*interpolators['middle'](ray)))
         raw.flat[ids] = quality_score(sampled['low'], sampled['middle'], sampled['high'],
-                                     np.mean(blockers, axis=0), sampled['visibility'])
+                                     horizon_obstruction(blockers), sampled['visibility'])
     covered = mask & np.isfinite(raw)
     coverage = float(covered.sum()/mask.sum())
     if coverage < .99:

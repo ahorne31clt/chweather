@@ -44,7 +44,10 @@ def run(args):
         raise ValueError('Invalid CONUS mask or output score')
     cities=json.loads((ROOT/'sunset/cities.json').read_text(encoding='utf-8'))
     places=top_locations(score,target_lat,target_lon,mask,cities,sunset_hours,day)
-    metadata=dict(schema_version=1,algorithm_version=MODEL_VERSION,product='Experimental sunset color potential',
+    edition=os.environ.get('SUNSET_EDITION', 'update')
+    if edition not in ('morning', 'final', 'update'):
+        raise ValueError('Unknown sunset edition')
+    metadata=dict(schema_version=1,algorithm_version=MODEL_VERSION,edition=edition,product='Experimental sunset color potential',
         model='NOAA/NCEP HRRR 3 km',model_id='hrrr',model_run=model_run.isoformat().replace('+00:00','Z'),
         forecast_valid_date=day.isoformat(),valid_timezone_basis='Each location’s sunset on this calendar date',
         generated_at_utc=datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00','Z'),

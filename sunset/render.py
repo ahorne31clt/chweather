@@ -25,7 +25,7 @@ def render(path, root, latitudes, longitudes, score, mask, usa, countries, state
         logo=fig.add_axes([.012,.885,.076,.105]); logo.axis('off')
         logo.imshow(Image.open(Path(root)/'assets/ch-weather-logo.png'))
         fig.text(.102,.941,'SUNSET OUTLOOK',fontsize=27,weight='bold')
-        fig.text(.103,.909,'CONUS  /  EVENING COLOR POTENTIAL',fontsize=10,color=GOLD,weight='bold')
+        fig.text(.103,.909,'CONUS  /  FINAL AFTERNOON OUTLOOK' if metadata.get('edition')=='final' else 'CONUS  /  EVENING COLOR POTENTIAL',fontsize=10,color=GOLD,weight='bold')
         fig.text(.985,.951,metadata['forecast_valid_date'],ha='right',fontsize=13,weight='bold')
         fig.text(.985,.925,'VALID AT EACH LOCATION’S SUNSET',ha='right',fontsize=8.5,color=SAGE)
         fig.text(.985,.903,'EXPERIMENTAL  /  NOT A PROBABILITY',ha='right',fontsize=8.5,color=GOLD)
