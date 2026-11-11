@@ -1,5 +1,4 @@
 import json
-import re
 from pathlib import Path
 import pytest
 from scripts import package_site as export
@@ -53,8 +52,13 @@ def test_sunset_lookup_binary_is_validated_and_cname_is_preserved(tmp_path,monke
 
 def test_workflow_generates_every_packaged_product_before_publishing():
     workflow=(Path(__file__).resolve().parents[1]/'.github/workflows/sunset.yml').read_text()
-    products=re.search(r'product: \[([^\]]+)\]',workflow).group(1)
-    assert {p.strip() for p in products.split(',')}==set(export.PRODUCTS)-{'models','seasonal'}
+    from scripts.run_product import outlook_products
+    assert set(outlook_products())==set(export.PRODUCTS)-{'models','seasonal'}
+    assert outlook_products('0 8 * * *')==outlook_products()
+    assert outlook_products('0 16 * * *')==['sunset']
+    assert 'sunset' not in outlook_products('30 5,11,17,23 * * *')
+    assert "cron: '0 16 * * *'\n      timezone: America/New_York" in workflow
+    assert 'fromJSON(needs.verify.outputs.products)' in workflow
     assert 'needs: verify' in workflow
     assert 'fail-fast: false' in workflow
     assert '--check --product "$PRODUCT"' in workflow

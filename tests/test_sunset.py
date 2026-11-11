@@ -155,3 +155,11 @@ def test_hrrr_missing_fields_rejected(tmp_path):
     path=tmp_path/'empty.grib2';path.write_bytes(b'')
     with pytest.raises(ValueError,match='Missing required HRRR'):
         read_grib(path,datetime(2026,10,30,6,tzinfo=timezone.utc),20)
+
+
+def test_close_horizon_blocker_and_overcast_reduce_sunset_score():
+    from sunset.model import horizon_obstruction
+    near=horizon_obstruction([1.,0.,0.,0.,0.])
+    far=horizon_obstruction([0.,0.,0.,0.,1.])
+    assert 1>near>far>0
+    assert quality_score(0,.1,.55,0,20000)>quality_score(0,1.,1.,0,20000)

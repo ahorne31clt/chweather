@@ -31,7 +31,7 @@ def test_no_high_cloud_or_daylight_required_and_pressure_is_reported():
         fields['temp'+str(p)]=np.array([[220.]])
         fields['q'+str(p)]=np.array([[humidity(220.,p*100.,1.2 if p==250 else .5)]])
     result=diagnose(fields)
-    assert result['category'][0,0]==2
+    assert result['category'][0,0]==3
     assert result['pressure_hpa'][0,0]==250
     assert np.isclose(result['rhi'][0,0],1.2)
 
@@ -47,11 +47,28 @@ def test_clear_night_still_reports_contrail_environment():
     lat=np.arange(30.,42.);lon=np.arange(-90.,-70.)
     shape=(len(lat),len(lon));constant=lambda x:np.full(shape,x)
     fields={k:constant(v) for k,v in dict(low=0,middle=0,high=0,visibility=20000,rate=0,rain=0).items()}
-    for p in (200,250,300,350,400,500):
+    for p in (*LEVELS,500):
         fields['temp'+str(p)]=constant(220.)
         if p in LEVELS:fields['q'+str(p)]=constant(humidity(220.,p*100.,1.1))
         if p in (300,400,500):fields.update({f'rh{p}':constant(40.),f'ice{p}':constant(0.)})
     result,alt=score(fields,datetime(2026,11,3,5,tzinfo=timezone.utc),lat,lon)
     assert np.all(alt<0)
     assert np.all(result['halo']==0)
-    assert np.all(result['contrail']==2)
+    assert np.all(result['contrail']==3)
+
+
+def test_intermediate_hrrr_layer_and_near_saturation_are_distinct():
+    from optics.contrails import HRRR_LEVELS, combined
+    def profile(levels, moisture):
+        fields={}
+        for level in levels:
+            fields[f'temp{level}']=np.array([220.])
+            fields[f'q{level}']=np.array([humidity(220.,level*100,moisture.get(level,.5))])
+        return fields
+    gfs=diagnose(profile(LEVELS,{250:.95}))
+    hrrr=diagnose(profile(HRRR_LEVELS,{275:1.02}),HRRR_LEVELS)
+    assert gfs['category'][0]==2
+    assert hrrr['category'][0]==3 and hrrr['pressure_hpa'][0]==275
+    assert combined(gfs,hrrr)['hrrr_selected'][0]
+    hrrr['rhi'][0]=np.nan
+    assert combined(gfs,hrrr)['category'][0]==2
