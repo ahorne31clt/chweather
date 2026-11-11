@@ -50,9 +50,28 @@ jobs:
           python scripts/package_site.py --check
           python scripts/package_site.py --output-dir _site
       - uses: actions/configure-pages@v5
+        id: pages
+      - name: Read previous forecast publication for Discord
+        continue-on-error: true
+        env:
+          DISCORD_ENABLED: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
+          FORECAST_PAGE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          if [ "$DISCORD_ENABLED" = "true" ]; then
+            python -m scripts.discord_forecasts snapshot
+          fi
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - name: Publish latest successful weather products together
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Announce newly published forecasts on Discord
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          FORECAST_PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            python -m scripts.discord_forecasts notify
+          fi
