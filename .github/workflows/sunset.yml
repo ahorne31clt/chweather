@@ -117,7 +117,7 @@ jobs:
         run: python -m scripts.run_product "$PRODUCT"
       - name: Validate this generator's manifest and every referenced asset
         id: validate
-        if: always() && (steps.generate.outcome == 'success' || steps.generate.outcome == 'failure')
+        if: always() && (steps.generate.outcome == 'success' || (steps.generate.outcome == 'failure' && hashFiles(format('generated/{0}/latest.json', matrix.product)) != ''))
         run: python scripts/package_site.py --check --product "$PRODUCT"
       - name: Stage only this job's output with its generated/product directory
         id: stage
