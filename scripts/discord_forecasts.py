@@ -44,7 +44,7 @@ def newer(before, after, now):
         old = before.get(key)
         if key == 'sunset':
             valid = row['forecast_valid_date']
-            if old and (valid, timestamp(row['issued_at_utc'])) <= (old['forecast_valid_date'], timestamp(old['issued_at_utc'])):
+            if old and (valid, timestamp(row['issued_at_utc']), row.get('edition') == 'final') <= (old['forecast_valid_date'], timestamp(old['issued_at_utc']), old.get('edition') == 'final'):
                 continue
             if valid < now.astimezone(ZoneInfo("America/New_York")).date().isoformat():
                 continue
@@ -123,7 +123,7 @@ def main():
     if not changes:
         print('No new eligible forecasts to announce.')
         return
-    labels = '\n'.join(f'- {PRODUCTS[key]}' for key, row in changes)
+    labels = '\n'.join(f'- {PRODUCTS[key]}' + (' · final afternoon edition' if key=='sunset' and row.get('edition')=='final' else '') for key, row in changes)
     files = [attachment(root, key, row) for key, row in changes]
     send(os.environ['DISCORD_WEBHOOK_URL'], f'**New CH Weather forecasts**\n{labels}\n<{page}/>', files)
     print('Discord confirmed the forecast announcement.')
