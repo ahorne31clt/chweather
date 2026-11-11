@@ -2,7 +2,7 @@
 
 Successful products now publish independently when other jobs fail. Publication retrieves each latest validated per-product artifact, not an all-or-nothing combined bundle. Retained data keeps its original timestamps. See [the current failure-handling repair](PARTIAL-UPDATES.md).
 
-Outlooks use `.github/workflows/sunset.yml` (**Daily weather and sunset outlooks**), starting at 8 a.m. America/New_York and additionally at 05:30, 11:30, 17:30, and 23:30 UTC. Models use the independent `.github/workflows/models.yml` (**Scheduled weather models**), starting at those four UTC times. `.github/workflows/publish.yml` deploys each newest validated product artifact after either workflow completes. Upload all three matching workflows and source files. See [repair instructions](FIX-AUTOMATIC-UPDATES.md).
+Outlooks use `.github/workflows/sunset.yml` (**Daily weather and sunset outlooks**), starting at 8 a.m. Eastern. The sunset-only final edition starts at 4 p.m. Eastern. Other outlooks also refresh at 05:30, 11:30, 17:30, and 23:30 UTC. Models use the independent `.github/workflows/models.yml` (**Scheduled weather models**), starting at those four UTC times. `.github/workflows/publish.yml` deploys each newest validated product artifact after either workflow completes. Upload all three matching workflows and source files. See [repair instructions](FIX-AUTOMATIC-UPDATES.md).
 
 | Step | Command | Outputs refreshed |
 | --- | --- | --- |

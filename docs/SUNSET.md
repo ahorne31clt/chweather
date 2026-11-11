@@ -89,17 +89,12 @@ step; there are no such credentials in this implementation.
    relative so a repository Pages URL works too. For another hosting service,
    publish the `_site/` export from the same successful job instead of Pages.
 
-The schedule is `0 8 * * *` with `timezone: America/New_York`, so GitHub handles
-EST/EDT. **8 a.m. is the scheduled start, not a guaranteed publication time.**
-GitHub may queue or delay runs, and data/rendering/deployment take additional
-time. If precise 08:00 delivery becomes a hard requirement, use infrastructure
-with a timing SLA or precompute before release. No unattended host can promise
-fresh outputs during upstream or hosting failures. GitHub can automatically
-disable schedules on inactive public repositories after 60 days; check Actions
-if updates stop. The job has a 20-minute timeout and does not silently continue
-after failed tests, downloads, processing, or rendering.
+The morning run starts at 8 a.m. Eastern. A sunset-only run starts at 4 p.m.
+Eastern and labels the new map as the final afternoon outlook. GitHub handles
+EST/EDT. The image appears after generation and Pages deployment finish.
+The regular UTC refreshes continue to generate the other outlook products.
 
-## Meteorological method, version ch-sunset-2.0.0
+## Meteorological method, version ch-sunset-2.1.0
 
 ### Input and spatial/temporal treatment
 
@@ -108,7 +103,7 @@ after failed tests, downloads, processing, or rendering.
 - Only extended 00/06/12/18 UTC cycles are eligible, with a three-hour publication allowance and at most two preceding-cycle attempts. At 8 a.m. Eastern the 06 UTC cycle is normally selected. Never use an ordinary 18-hour cycle.
 - Compute the minimum/maximum sunset time over the CONUS bounding box, including sunsets on the following UTC day. Require all hourly steps bracketing those times to fall within forecast hours 0–48. Check the farthest required step first. Download only that short hourly window, not all 49 steps. A run that stops before sunset is rejected; there is no GFS fallback or extrapolation.
 - Use NOAA approximate solar timing with a 90.833° zenith, flat horizon and standard refraction. Interpolate hourly forecasts linearly in time and bilinearly in native projected coordinates at each location's sunset.
-- Sample sunward low/mid cloud at 80, 160, and 240 km along the seasonal solar azimuth at the observer's sunset time. Out-of-domain rays have no score; require at least 99% CONUS land coverage before publishing and report the actual fraction. The first HRRR run covered 100%.
+- Sample sunward low/mid cloud at 30, 70, 120, 180, and 240 km along the seasonal solar azimuth at the observer's sunset time. Out-of-domain rays have no score; require at least 99% CONUS land coverage before publishing and report the actual fraction. The first HRRR run covered 100%.
 - Validate grid spacing, levels, units, initialization, forecast lead, missing values and cloud bounds for every field and hour. Never mix runs or averaged and instantaneous cloud records.
 - Evaluate in 40,000-point chunks with float32 input cubes to keep memory modest on an Ubuntu runner. Smooth only 0.65 native cells, with a mask-normalized kernel that cannot spread missing values into the land scores.
 - Location search uses nearest native scores on a 0.03° geographic lookup lattice. `lookup.json` describes `lookup.bin.gz`: two little-endian signed-int16 planes (score × 10, UTC sunset minutes), missing value -32768. The browser checks the compressed payload SHA-256 and decompresses locally. This lattice does not add physical detail to HRRR.
@@ -119,20 +114,19 @@ Cloud cover is converted to fractions `L` (low), `M` (middle), `H` (high).
 `clip(x)` means constrain to 0–1. `V` is visibility in meters.
 
 ```text
-U = max(0.9 H, 0.7 M)
-canvas = clip(U / 0.55) × [1 - 0.45 × clip((U - 0.65) / 0.35)]
-B = mean over 80/160/240 km of max(L_sunward, 0.6 M_sunward)
-score = (18 + 82 canvas)
-        × (1 - 0.9 L)^1.3
-        × (1 - 0.85 B)^1.2
-        × [0.75 + 0.25 clip(V / 16000)]
+U = 1 - (1 - 0.95 H)(1 - 0.65 M)
+canvas = clip(U / 0.50) × [1 - 0.60 × clip((U - 0.65) / 0.35)]
+B = 0.70 × weighted mean + 0.30 × maximum of max(L_sunward, 0.6 M_sunward)
+weights at 30/70/120/180/240 km = 0.30/0.25/0.20/0.15/0.10
+score = (18 + 82 canvas) × (1 - 0.9 L)^1.3 × (1 - 0.35 M²)
+        × (1 - 0.85 B)^1.2 × [0.60 + 0.40 clip(V / 16000)]
 ```
 
 The coefficients are **CH Weather design choices**, not coefficients fitted to
 observed sunset ratings or prescribed by NOAA. The 18-point clear-sky baseline
 allows some horizon color without a cloud canvas. Intermediate upper-cloud
 amounts are favored over a completely filled cloud layer. Low clouds and sunward
-low/mid cloud reduce the score. Visibility supplies a small attenuation penalty;
+low/mid cloud reduce the score. Visibility supplies an attenuation penalty;
 it is **not** a measurement or model of aerosol color enhancement.
 
 Smooth once with a 0.65-native-cell Gaussian kernel, clip 0–100, and render filled

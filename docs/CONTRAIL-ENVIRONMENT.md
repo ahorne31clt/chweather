@@ -10,8 +10,10 @@ aircraft crossing the layer. No flight traffic or airport-distance boost is used
 - **No qualifying sampled layer:** none of the tested pressure surfaces met the
   assumed exhaust-mixing formation criterion. This does not exclude a thin
   suitable layer between surfaces.
-- **Formation only:** the formation test is met, but ambient air is below ice
-  saturation, so the persistence condition is not met.
+- **Formation only:** the formation test is met and modeled humidity is below
+  90% relative to ice.
+- **Near ice saturation:** formation is possible and modeled ice-relative humidity
+  is 90% to below 100%. This is an experimental uncertainty category.
 - **Persistence environment:** formation test met and ice-relative humidity at
   least 100%. A contrail could persist and spread, but its survival and lifetime
   are not modeled.
@@ -25,11 +27,13 @@ required crystal shapes/orientations are not established by contrail formation.
 
 ## Reproducible physics
 
-GFS temperature and **specific humidity** are requested at 200, 250, 300 and
-350 hPa, retaining the original ice-optics fields at 300/400/500 hPa. Native
-0.25-degree and three-hour inputs are linearly interpolated hourly. Specific
-humidity avoids assuming whether the provider's RH reference is ice, water or
-mixed phase. It does not eliminate upper-air moisture errors.
+GFS temperature and specific humidity are sampled at 150, 200, 250, 300,
+350 and 400 hPa. When a complete extended HRRR pressure subset is available,
+HRRR adds nine independent pressure levels from 200 to 400 hPa at 25 hPa
+spacing. Each HRRR profile is sampled at the nearest native point to the 0.25°
+display grid. Both sources are interpolated hourly from three-hourly inputs.
+The highest category supported by either model is displayed. HRRR is selected
+on a tie where available, and the location view reports both categories.
 
 With `q` in kg/kg, `p` in Pa, and epsilon 0.622, vapor pressure is
 `e = q*p / (epsilon + (1-epsilon)*q)`. Ice-relative humidity is
@@ -49,15 +53,25 @@ saturation. The persistence category additionally requires `RHi >= 1`.
 Each pressure surface is evaluated independently, then the highest category is
 selected; among tied categories the moistest ice-relative level is reported.
 
-No humidity scaling is fitted, and no artificial near-saturation bonus is added.
+The near-saturation category leaves the original humidity values and 100% persistence threshold intact.
 The coarse vertical sampling, engine assumptions, model humidity biases,
 interpolation, wake-vortex losses, mixing, sedimentation, wind shear and cloud
 advection can all change a real outcome. No cloud lifetime or halo occurrence is
 calculated. A future observational evaluation is needed before interpreting
 these categories as useful local forecasting skill.
 
+## Charlotte comparison, November 6, 2026
+
+At about noon EST, the archived 06 UTC GFS forecast interpolated to 17 UTC at
+35.25°N, 80.75°W gave 91.6% ice-relative humidity at 200 hPa with the formation
+criterion met. The sampled 06 UTC HRRR profile was drier. The old category
+would have shown formation only. The revised category flags near saturation.
+Neither sampled profile reproduced a persistence environment at that point.
+This single reported observation does not establish forecast skill.
+
 ## Sources
 
+- [How well can persistent contrails be predicted? An update](https://acp.copernicus.org/articles/24/7911/2024/)
 - [FAA contrail explanation](https://www.faa.gov/contrails)
 - [pycontrails Schmidt–Appleman implementation documentation](https://py.contrails.org/api/pycontrails.models.sac.html)
 - [pycontrails persistent contrail regions](https://py.contrails.org/api/pycontrails.models.pcr.html)
@@ -68,20 +82,9 @@ This project implements its own compact mixing-line calculation with existing
 NumPy/SciPy dependencies. It does not run pycontrails, CoCiP, or an aircraft
 trajectory/lifetime model, and is not endorsed by the cited organizations.
 
-## Setup and exact files
+## Regeneration
 
-No new environment variable, secret, dependency or workflow is required.
-`python -m optics` downloads the additional fields and renders all 14 maps.
-`python scripts/package_site.py --check --product optics` checks outputs.
-New source cache names prevent reusing incomplete old GFS field subsets.
-
-Replace: `optics/data.py`, `optics/science.py`, `optics/__main__.py`,
-`optics/render.py`, `optics/index.html`, `assets/optics.js`, `assets/optics.css`,
-`scripts/package_github.py`. Add: `optics/contrails.py`, `tests/test_contrails.py`,
-this guide. The upload ZIP contains these exact paths. Generated PNG/JSON files
-are rebuilt by Actions rather than uploaded as source.
-
-After uploading, run **Daily weather and sunset outlooks**. Its independent
-optics job generates the new maps and its successful artifact is picked up by
-the existing publisher. The page shows an unavailable message for a new view
-until a matching forecast has been published.
+Run `python -m optics` or the **Daily weather and sunset outlooks** workflow.
+The HRRR pressure fields are optional and the forecast uses GFS when the HRRR
+subset is unavailable. The website continues to interpret earlier published
+three-category forecasts until the new forecast arrives.

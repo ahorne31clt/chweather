@@ -60,11 +60,13 @@ ice supersaturation. Cold, moist modeled air does not establish crystal habit.
 Let `h` be high-cloud fraction, `l` low and `m` middle fractions.
 The veil proxy is `sqrt(h) * (1 - 0.55*h^3)`; the unobscured-sky proxy is
 `(1-l)*(1-0.8*m)`. Visibility contributes `clip(VIS_m/15000,0,1)`.
-Multiply this visibility factor by the square root of unobscured-sky proxy at
-the observer times the same proxy sampled 40 km toward the Sun. The base
-ice-optics score is 100 times this viewing factor, veil proxy and
-crystal-environment proxy. These horizontal samples are a simple obstruction
-proxy, not cloud-height-aware radiative transfer.
+Multiply visibility by the square root of the local and sunward unobscured-sky
+proxies. Sunward low and middle clouds are sampled at distances estimated from
+1.5 km and 4 km cloud heights and solar elevation. The ice-cloud ingredient
+combines 55% local veil times crystal proxy with 45% of that same ingredient
+sampled toward the Sun at an estimated 8 km height. Rays are capped at 75 km.
+These heights and weights are heuristic. The separate contrail categories do
+not increase the optical ingredient score.
 
 - Halo: base score with Sun above zero degrees.
 - Upper tangent arc: same ingredient score. The model cannot resolve the column
