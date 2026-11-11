@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: '0 8 * * *'
       timezone: America/New_York
+    - cron: '0 16 * * *'
+      timezone: America/New_York
     - cron: '30 5,11,17,23 * * *'
   workflow_dispatch:
   push:
@@ -32,7 +34,7 @@ on:
       - '.github/workflows/sunset.yml'
 
 concurrency:
-  group: outlook-generation
+  group: ${{ github.event.schedule == '0 16 * * *' && 'sunset-final-generation' || 'outlook-generation' }}
   cancel-in-progress: false
 
 permissions:
@@ -47,6 +49,8 @@ env:
 
 jobs:
   verify:
+    outputs:
+      products: ${{ steps.plan.outputs.products }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -63,6 +67,17 @@ jobs:
       - name: Verify ecCodes can decode GRIB
         run: |
           python -c "import eccodes; message = eccodes.codes_grib_new_from_samples('GRIB2'); print(eccodes.codes_get(message, 'edition')); eccodes.codes_release(message)"
+      - name: Select forecast products for this schedule
+        id: plan
+        env:
+          OUTLOOK_SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from scripts.run_product import outlook_products
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              print('products=' + json.dumps(outlook_products(os.environ.get('OUTLOOK_SCHEDULE', ''))), file=output)
+          PY
       - name: Test generators and clean-checkout packaging
         timeout-minutes: 10
         run: python -m pytest -q tests
@@ -76,9 +91,10 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        product: [sunset, weather, tropical, centers, enso, analysis, ensembles, optics, specialty-daily, specialty-outdoor, specialty-stargazing, specialty-frost, specialty-snow, specialty-ice, specialty-comfort, specialty-confidence]
+        product: ${{ fromJSON(needs.verify.outputs.products) }}
     env:
       PRODUCT: ${{ matrix.product }}
+      SUNSET_EDITION: ${{ github.event.schedule == '0 16 * * *' && 'final' || github.event.schedule == '0 8 * * *' && 'morning' || 'update' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
