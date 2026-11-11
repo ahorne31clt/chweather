@@ -33,7 +33,7 @@ def sample(field,lat,lon,azimuth,distance):
     return map_coordinates(field,[(target_lat-lat[0])/(lat[1]-lat[0]),(target_lon-lon[0])/(lon[1]-lon[0])],order=1,mode='constant',cval=np.nan)
 
 
-def score(fields,time,lat,lon):
+def score(fields,time,lat,lon,contrail=None):
     xx,yy=np.meshgrid(lon,lat);alt,az=geometry(time,yy,xx)
     low=np.clip(fields['low']/100,0,1);middle=np.clip(fields['middle']/100,0,1);high=np.clip(fields['high']/100,0,1)
     # RH is the model's published RH, not a derived ice-supersaturation diagnosis.
@@ -41,12 +41,17 @@ def score(fields,time,lat,lon):
     humidity=np.stack([np.clip((fields['rh'+str(p)]-50)/40,0,1) for p in (300,400,500)])
     ice=np.stack([1-np.exp(-np.maximum(fields['ice'+str(p)],0)/1e-5) for p in (300,400,500)])
     crystal_environment=np.max(cold*(.4*humidity+.6*ice),axis=0)
-    # Cloud fraction does not diagnose optical depth: this is only a heuristic.
+    # Estimate a sunward sightline using representative cloud heights.
+    slope=np.maximum(np.tan(np.deg2rad(np.clip(alt,1,89))),.02)
+    low_path=sample(low,lat,lon,az,np.clip(1.5/slope,2,75))
+    mid_path=sample(middle,lat,lon,az,np.clip(4/slope,2,75))
+    local_clear=(1-low)*(1-.8*middle)
+    sun_clear=(1-low_path)*(1-.8*mid_path)
+    visible=np.clip(fields['visibility']/15000,0,1)*np.sqrt(np.maximum(0,local_clear*sun_clear))
     veil=np.sqrt(high)*(1-.55*high**3)
-    unobscured=(1-low)*(1-.8*middle)
-    sun_path=sample(unobscured,lat,lon,az,40)
-    visible=np.clip(fields['visibility']/15000,0,1)*np.sqrt(np.maximum(0,unobscured*sun_path))
-    base=100*veil*crystal_environment*visible
+    local_ice=veil*crystal_environment
+    sunward_ice=sample(local_ice,lat,lon,az,np.clip(8/slope,2,75))
+    base=100*(.55*local_ice+.45*sunward_ice)*visible
     daylight=alt>0
     result={'halo':np.where(daylight,base,0),
       'sundog':np.where(daylight,base*(.25+.75*np.exp(-((alt-12)/25)**2)),0),
@@ -59,5 +64,5 @@ def score(fields,time,lat,lon):
     result['rainbow']=np.where(daylight&(alt<42),100*(1-np.exp(-drops/.5))*visible,0)
     if 'q200' in fields:
         from .contrails import diagnose
-        result['contrail']=diagnose(fields)['category']
+        result['contrail']=(contrail if contrail is not None else diagnose(fields))['category']
     return {k:np.clip(v,0,100) for k,v in result.items()},alt

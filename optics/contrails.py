@@ -3,7 +3,9 @@ from functools import lru_cache
 import numpy as np
 from scipy.optimize import brentq
 
-LEVELS=(200,250,300,350)
+LEVELS=(150,200,250,300,350,400)
+HRRR_LEVELS=tuple(range(200,401,25))
+NEAR_SATURATION=.90
 EPSILON=.622
 
 
@@ -35,10 +37,11 @@ def layer(temperature,specific_humidity,pressure_pa):
     return category,rhi
 
 
-def diagnose(fields):
+def diagnose(fields, levels=LEVELS):
     categories=[];humidities=[]
-    for p in LEVELS:
+    for p in levels:
         category,rhi=layer(fields['temp'+str(p)],fields['q'+str(p)],p*100.)
+        category=np.where(category==2,3,np.where((category==1)&(rhi>=NEAR_SATURATION),2,category))
         categories.append(category);humidities.append(rhi)
     categories=np.stack(categories);humidities=np.stack(humidities)
     # Prefer the highest category, then its moistest qualifying sampled level.
@@ -46,6 +49,15 @@ def diagnose(fields):
     ranking=np.where(categories==category[None,...],humidities,-np.inf)
     chosen=np.argmax(ranking,axis=0)
     select=lambda a:np.take_along_axis(a,chosen[None,...],axis=0)[0]
-    pressure=np.array(LEVELS)[chosen]
+    pressure=np.array(levels)[chosen]
     return dict(category=category,rhi=select(humidities),pressure_hpa=pressure,
-        temperature_c=select(np.stack([fields['temp'+str(p)]-273.15 for p in LEVELS])))
+        temperature_c=select(np.stack([fields['temp'+str(p)]-273.15 for p in levels])))
+
+
+def combined(gfs, hrrr=None):
+    if hrrr is None:
+        return dict(gfs, hrrr_selected=np.zeros_like(gfs['category']))
+    usable=np.isfinite(hrrr['rhi'])
+    use_hrrr=usable & (hrrr['category']>=gfs['category'])
+    result={key:np.where(use_hrrr,hrrr[key],value) for key,value in gfs.items()}
+    return dict(result,hrrr_selected=use_hrrr)

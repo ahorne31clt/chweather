@@ -41,6 +41,49 @@ def hrrr_clouds(http,cache,times,lat,lon):
     return None,dict(status='unavailable',reason='; '.join(errors) or 'No extended HRRR run reaches the entire window')
 
 
+def hrrr_profiles(http, cache, times, lat, lon, cloud_metadata):
+    """Sample 3-hourly upper-air fields from the same extended HRRR cycle."""
+    if cloud_metadata.get('status') != 'available':
+        return None, dict(status='unavailable', reason='No complete HRRR cloud cycle')
+    from models.data import read_frame
+    from models.render import native_axes, projection_for
+    from models.woof import download_ranges, ranges
+    from .contrails import HRRR_LEVELS
+
+    run=datetime.fromisoformat(cloud_metadata['model_run'].replace('Z','+00:00'))
+    leads=[int((t-run).total_seconds()/3600) for t in times]
+    hours=range(leads[0]//3*3, (leads[-1]+2)//3*3+1, 3)
+    requested=[(variable, f'{level} mb') for level in HRRR_LEVELS for variable in ('TMP','SPFH')]
+    keys={f'temperature{level}':f'temp{level}' for level in HRRR_LEVELS}
+    keys.update({f'specific_humidity{level}':f'q{level}' for level in HRRR_LEVELS})
+    sampled={};sources=[];grid_id=None
+    xx,yy=np.meshgrid(lon,lat)
+    try:
+        for hour in hours:
+            url=f'https://noaa-hrrr-bdp-pds.s3.amazonaws.com/hrrr.{run:%Y%m%d}/conus/hrrr.t{run:%H}z.wrfprsf{hour:02d}.grib2'
+            path=Path(cache)/f'hrrr-{run:%Y%m%d%H}-f{hour:03d}-optics-profiles-v1.grib2'
+            if not path.exists():
+                index=http.get(url+'.idx',timeout=(10,25));index.raise_for_status()
+                if len(index.content)>1_000_000:raise ValueError('Oversized HRRR pressure inventory')
+                selected=ranges(index.text,requested)
+                if sum(end-start+1 for start,end in selected)>30_000_000:raise ValueError('HRRR profile subset too large')
+                download_ranges(http,url,path,selected)
+            fields,grid=read_frame(path,'hrrr',run,hour,set(keys))
+            if grid_id is None:
+                grid_id=grid['id'];projection=projection_for(grid);x,y=native_axes(grid,projection)
+                points=projection.transform_points(ccrs.PlateCarree(),xx,yy)[...,[1,0]]
+            elif grid['id']!=grid_id:raise ValueError('HRRR profile grids differ')
+            sampled[hour]={keys[key]:RegularGridInterpolator((y,x),values,method='nearest',bounds_error=False,fill_value=np.nan)(points) for key,values in fields.items()}
+            sources.append(url)
+        result=[]
+        for lead in leads:
+            lower=lead//3*3;fraction=(lead-lower)/3
+            result.append(sampled[lower] if fraction==0 else {key:(1-fraction)*values+fraction*sampled[lower+3][key] for key,values in sampled[lower].items()})
+        return result,dict(status='available',model_run=cloud_metadata['model_run'],pressure_levels_hpa=list(HRRR_LEVELS),interval_hours=3,source_urls=sources)
+    except Exception as error:
+        return None,dict(status='unavailable',reason=str(error))
+
+
 class Images(HTMLParser):
     def __init__(self):super().__init__();self.urls=[]
     def handle_starttag(self,tag,attrs):
