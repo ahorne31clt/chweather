@@ -62,8 +62,11 @@ def test_workflow_generates_every_packaged_product_before_publishing():
     assert 'timezone: America/New_York' in workflow
     assert 'timeout-minutes: 40' in workflow
     assert '--only-binary=:all:' in workflow
-    assert 'sudo timeout 120 apt-get' in workflow
     models=(Path(__file__).resolve().parents[1]/'.github/workflows/models.yml').read_text()
+    seasonal=(Path(__file__).resolve().parents[1]/'.github/workflows/seasonal.yml').read_text()
+    for generator in (workflow, models, seasonal):
+        assert 'apt-get' not in generator
+        assert generator.count('Verify ecCodes can decode GRIB') == generator.count('python -m pip install')
     assert 'model: [gfs, hrrr, woofnam, rrfs, ecmwf]' in models
     assert 'python -m models --model "$MODEL"' in models
     publish=(Path(__file__).resolve().parents[1]/'.github/workflows/publish.yml').read_text()
