@@ -141,6 +141,7 @@ def field_key(short,level_type,level,model):
     if short=='sp' and level_type=='surface':return 'surface_pressure'
     if level_type=='isobaricInhPa':
         if short=='t':return 'temperature'+str(int(level))
+        if short=='q':return 'specific_humidity'+str(int(level))
         if short=='r':return 'humidity'+str(int(level))
         if short=='dpt':return 'dewpoint'+str(int(level))
         if short=='gh' and level not in (500,1000):return 'height'+str(int(level))
@@ -226,6 +227,8 @@ def read_frame(path,model,run,hour,required=None):
                     elif key.startswith(('temperature','dewpoint')):
                         if ec.codes_get(gid,'units')!='K' or good.min()<150 or good.max()>350:
                             raise ValueError('Unexpected 2 m temperature/dewpoint units or range')
+                    elif key.startswith('specific_humidity'):
+                        if ec.codes_get(gid,'units')!='kg kg**-1' or good.min()<0 or good.max()>.1:raise ValueError('Invalid specific humidity')
                     elif key.startswith('humidity'):
                         if ec.codes_get(gid,'units')!='%' or good.min()<0 or good.max()>100.1:raise ValueError('Invalid 2 m relative humidity')
                     elif key in ('cape','mucape'):
