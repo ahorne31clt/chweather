@@ -74,26 +74,39 @@ def run(output=None):
         temp=Path(temp);catalog=products()
         geo=geography(http,ROOT/'.cache/sunset')
         now=datetime.now(timezone.utc)
+        rendered=[]
+        failures={}
         for item in catalog:
             filename=item['id']+'.png'
             logging.info('Rendering %s from official GIS data',item['title'])
-            rows,details=(cpc if item['center']=='cpc' else wpc)(http,item,now)
-            item.update(details)
-            render(temp/filename,ROOT,item,rows,geo)
-            with Image.open(temp/filename) as image:width,height=image.size
-            item.update(image_filename=filename,image_sha256=hashlib.sha256((temp/filename).read_bytes()).hexdigest(),width=width,height=height,retrieved_at_utc=now.isoformat().replace('+00:00','Z'),issuance_and_validity='Official GIS issuance and valid period printed on the CH Weather map.')
+            try:
+                rows,details=(cpc if item['center']=='cpc' else wpc)(http,item,now)
+                item.update(details)
+                render(temp/filename,ROOT,item,rows,geo)
+                with Image.open(temp/filename) as image:width,height=image.size
+                item.update(image_filename=filename,image_sha256=hashlib.sha256((temp/filename).read_bytes()).hexdigest(),width=width,height=height,retrieved_at_utc=now.isoformat().replace('+00:00','Z'),issuance_and_validity='Official GIS issuance and valid period printed on the CH Weather map.')
+                rendered.append(item)
+            except Exception as error:
+                failures[item['id']]=str(error)
+                logging.exception('Failed to generate %s',item['id'])
+                (temp/filename).unlink(missing_ok=True)
+        if not rendered:
+            raise RuntimeError('No WPC/CPC maps passed generation and validation')
         result=dict(schema_version=2,generated_at_utc=datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00','Z'),
-            products=catalog,notes=['CH Weather maps drawn from official NOAA/WPC/CPC GIS forecast data. This is a presentation of agency forecasts, not an independent CH Weather forecast.',
+            products=rendered,expected_products=[item['id'] for item in catalog],failed_products=failures,
+            notes=['CH Weather maps drawn from official NOAA/WPC/CPC GIS forecast data.',
                 'Retrieval time and source file modification time are not forecast issuance or validity.',
                 'Dated snapshots; official sources may publish newer guidance between website updates.'])
         manifest=temp/'latest.json';manifest.write_text(json.dumps(result,indent=2,allow_nan=False)+'\n',encoding='utf-8')
         for path in temp.glob('*.png'):os.replace(path,output/path.name)
         os.replace(manifest,output/'latest.json')
-    print(f'Published {len(catalog)} CH Weather WPC/CPC maps',flush=True)
+    print(f'Generated {len(rendered)}/{len(catalog)} CH Weather WPC/CPC maps',flush=True)
     return result
 
 
 if __name__=='__main__':
     logging.basicConfig(level=logging.INFO,format='%(levelname)s %(message)s')
-    try:run()
+    try:
+        result=run()
+        if result['failed_products']:raise SystemExit(1)
     except Exception:logging.exception('WPC/CPC refresh failed; previous publication preserved');raise SystemExit(1)
