@@ -45,7 +45,8 @@ def test_graphic_conversion_preserves_pixels_and_distinguishes_file_time(tmp_pat
         fetch_graphic(Http(b'<html>service unavailable</html>'),'https://example.test',tmp_path/'bad.png')
 
 
-def test_failed_refresh_keeps_entire_previous_publication(tmp_path,monkeypatch):
+@pytest.mark.parametrize('partial',[False,True])
+def test_failed_refresh_preserves_previous_outputs(tmp_path,monkeypatch,partial):
     pipeline=importlib.import_module('centers.__main__')
     (tmp_path/'latest.json').write_text('{"previous":true}')
     (tmp_path/'wpc-ero-1.png').write_bytes(b'previous successful graphic')
@@ -53,16 +54,24 @@ def test_failed_refresh_keeps_entire_previous_publication(tmp_path,monkeypatch):
         def __enter__(self):return self
         def __exit__(self,*_):return False
     monkeypatch.setattr(pipeline,'session',Session)
-    count=0
+    catalog=pipeline.products()[:2]
     def fail(http,item,now):
-        nonlocal count
-        count+=1
-        if count==2:raise ValueError('deliberate download failure')
+        if not partial or item['id']==catalog[0]['id']:
+            raise ValueError('deliberate download failure')
         return [],{'valid_period_label':'Test period'}
+    monkeypatch.setattr(pipeline,'products',lambda:catalog)
     monkeypatch.setattr(pipeline,'wpc',fail)
     monkeypatch.setattr(pipeline,'geography',lambda *args:None)
     monkeypatch.setattr(pipeline,'render',lambda path,*args:Image.new('RGB',(400,300)).save(path))
-    with pytest.raises(ValueError,match='deliberate'):
-        pipeline.run(tmp_path)
-    assert json.loads((tmp_path/'latest.json').read_text())=={'previous':True}
+    if partial:
+        result=pipeline.run(tmp_path)
+        assert list(result['failed_products'])==['wpc-ero-1']
+        assert result['expected_products']==['wpc-ero-1','wpc-ero-2']
+        assert [item['id'] for item in result['products']]==['wpc-ero-2']
+        assert (tmp_path/'wpc-ero-2.png').is_file()
+        assert json.loads((tmp_path/'latest.json').read_text())==result
+    else:
+        with pytest.raises(RuntimeError,match='No WPC/CPC maps'):
+            pipeline.run(tmp_path)
+        assert json.loads((tmp_path/'latest.json').read_text())=={'previous':True}
     assert (tmp_path/'wpc-ero-1.png').read_bytes()==b'previous successful graphic'

@@ -100,24 +100,27 @@ def test_publisher_keeps_other_products_when_one_product_raises(tmp_path,monkeyp
     for product in export.PRODUCTS:list(export.product_files(product,tmp_path))
 
 
-def test_partial_weather_restores_old_missing_maps_without_overwriting_new_spc(tmp_path,monkeypatch):
+@pytest.mark.parametrize('family,old_ids,new_count',[
+    ('weather',['spc-day1','spc-day2','spc-day3','weather-national','weather-nc','rain-national','rain-nc'],3),
+    ('centers',['wpc-ero-1','cpc-610-temperature'],1),
+])
+def test_partial_refresh_restores_old_missing_maps(tmp_path,monkeypatch,family,old_ids,new_count):
     monkeypatch.setattr(collect,'ROOT',tmp_path/'site')
     monkeypatch.setattr(collect,'artifact_candidates',lambda *args:[{'id':2},{'id':1}])
-    old_ids=['spc-day1','spc-day2','spc-day3','weather-national','weather-nc','rain-national','rain-nc']
     def download(repository,artifact,token,target):
-        ids=old_ids[:3] if artifact['id']==2 else old_ids
+        ids=old_ids[:new_count] if artifact['id']==2 else old_ids
         products=[dict(id=id,image_filename=id+'.png',generated_at_utc='new' if artifact['id']==2 else 'old') for id in ids]
         with ZipFile(target,'w') as z:
-            z.writestr('generated/weather/latest.json',json.dumps({'products':products,'foliage_status':'out_of_season'}))
-            for id in ids:z.writestr('generated/weather/'+id+'.png',str(artifact['id']))
+            z.writestr(f'generated/{family}/latest.json',json.dumps({'products':products,'foliage_status':'out_of_season','expected_products':old_ids}))
+            for id in ids:z.writestr(f'generated/{family}/{id}.png',str(artifact['id']))
     monkeypatch.setattr(collect,'download_artifact',download)
     temp=tmp_path/'temporary';temp.mkdir()
-    assert collect.restore_product('repo','weather','fixture',temp)
-    folder=tmp_path/'site/generated/weather';manifest=json.loads((folder/'latest.json').read_text())
-    assert len(manifest['products'])==7
-    assert len(manifest['retained_products'])==4
-    assert (folder/'spc-day1.png').read_text()=='2'
-    assert (folder/'rain-nc.png').read_text()=='1'
+    assert collect.restore_product('repo',family,'fixture',temp)
+    folder=tmp_path/'site'/'generated'/family;manifest=json.loads((folder/'latest.json').read_text())
+    assert len(manifest['products'])==len(old_ids)
+    assert manifest['retained_products']==old_ids[new_count:]
+    assert (folder/(old_ids[0]+'.png')).read_text()=='2'
+    assert (folder/(old_ids[-1]+'.png')).read_text()=='1'
 
 
 def test_woof_publishes_with_other_models_without_fake_airport_rates(tmp_path):
